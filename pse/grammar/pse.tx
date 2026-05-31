@@ -1,0 +1,57 @@
+Project: 'Project' name=ID ('target' '=' target=Target)? '{'
+    archetype=Archetype
+    contexts*=Context
+    infrastructure=Infrastructure?
+    deployment=Deployment?
+'}';
+
+Archetype:
+    'Archetype' value=ID;
+
+Target:
+    'dotnet' | 'java';
+
+Context:
+    'Context' name=ID '{'
+        entities*=Entity
+        valueObjects*=ValueObject
+        aggregates*=Aggregate
+    '}';
+
+Entity:
+    'Entity' name=ID '{'
+        properties*=Property
+    '}';
+
+ValueObject:
+    'ValueObject' name=ID '{'
+        properties*=Property
+    '}';
+
+Aggregate:
+    'Aggregate' name=ID '{'
+        'root' root=[Entity]
+        ('children' children+=[Entity])?
+    '}';
+
+Property:
+    type=ID name=ID;
+
+Infrastructure:
+    'Infrastructure' '{'
+        database=Database?
+        cache=Cache?
+        broker=Broker?
+    '}';
+
+Database:
+    'Database' type=ID;
+
+Cache:
+    'Cache' type=ID;
+
+Broker:
+    'MessageBroker' type=ID;
+
+Deployment:
+    'Deployment' target=ID;

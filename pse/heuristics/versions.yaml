@@ -1,0 +1,11 @@
+dotnet: "9.0"
+
+postgres: "17"
+
+redis: "8"
+
+rabbitmq: "4"
+
+serilog: "9.0"
+
+fluentvalidation: "12.1"

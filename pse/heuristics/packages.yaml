@@ -1,0 +1,18 @@
+serilog:
+  packages:
+    - Serilog.AspNetCore
+    - Serilog.Sinks.Console
+
+fluentvalidation:
+  packages:
+    - FluentValidation.AspNetCore
+
+mapster:
+  packages:
+    - Mapster
+    - Mapster.DependencyInjection
+
+xunit:
+  packages:
+    - xunit
+    - xunit.runner.visualstudio

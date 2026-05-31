@@ -1,0 +1,13 @@
+webapi:
+  capabilities:
+    logging: serilog
+    validation: fluentvalidation
+    mapping: mapster
+    testing: xunit
+    database: postgres
+
+cleanarchitecture:
+  capabilities:
+    logging: serilog
+    validation: fluentvalidation
+    mapping: mapster

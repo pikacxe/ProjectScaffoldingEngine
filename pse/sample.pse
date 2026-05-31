@@ -1,0 +1,43 @@
+Project StoreApi target=dotnet {
+
+    Archetype WebApi
+
+    Context Orders {
+
+        Entity Order {
+            Guid Id
+            DateTime CreatedAt
+            String Status
+        }
+
+        Entity OrderItem {
+            Guid ProductId
+            Int Quantity
+        }
+
+        Aggregate OrderAggregate {
+            root Order
+            children OrderItem
+        }
+    }
+
+    Context Identity {
+
+        Entity User {
+            Guid Id
+            String Email
+        }
+
+        ValueObject Email {
+            String Value
+        }
+    }
+
+    Infrastructure {
+        Database PostgreSQL
+        Cache Redis
+        MessageBroker RabbitMQ
+    }
+
+    Deployment Docker
+}

@@ -1,0 +1,25 @@
+cqrs:
+  mediatr:
+    depends_on: []
+  wolverine:
+    depends_on: []
+
+validation:
+  fluentvalidation:
+    depends_on: []
+
+logging:
+  serilog:
+    depends_on: []
+
+database:
+  postgres:
+    depends_on: []
+
+cache:
+  redis:
+    depends_on: []
+
+messaging:
+  rabbitmq:
+    depends_on: []

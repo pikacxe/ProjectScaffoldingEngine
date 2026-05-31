@@ -1,0 +1,19 @@
+webapi:
+  projects:
+    - Presentation
+    - Application
+    - Domain
+    - Infrastructure
+    - Tests
+
+cleanarchitecture:
+  projects:
+    - Presentation
+    - Application
+    - Domain
+    - Infrastructure
+
+modularmonolith:
+  projects:
+    - SharedKernel
+    - Modules
