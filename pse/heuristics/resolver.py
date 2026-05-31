@@ -39,23 +39,26 @@ def resolve_capabilities(ctx):
 
     if infra:
         if infra.database:
+            db_type = normalize_implementation("database", infra.database.type)
             graph.capabilities["database"] = Capability(
                 "database",
-                infra.database.type.lower(),
+                db_type,
                 "inferred"
             )
 
         if infra.cache:
+            cache_type = normalize_implementation("cache", infra.cache.type)
             graph.capabilities["cache"] = Capability(
                 "cache",
-                infra.cache.type.lower(),
+                cache_type,
                 "inferred"
             )
 
         if infra.broker:
+            broker_type = normalize_implementation("messaging", infra.broker.type)
             graph.capabilities["messaging"] = Capability(
                 "messaging",
-                infra.broker.type.lower(),
+                broker_type,
                 "inferred"
             )
 
@@ -87,3 +90,15 @@ def pick_default_implementation(name, preset_caps, registry):
         return next(iter(implementations.keys()))
 
     return None
+
+
+def normalize_implementation(capability: str, value: str):
+    if not value:
+        return "unresolved"
+
+    normalized = value.lower()
+
+    if capability == "database" and normalized == "postgresql":
+        return "postgres"
+
+    return normalized

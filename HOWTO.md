@@ -99,6 +99,13 @@ Usually left alone:
 All generated file bodies come from templates in [pse/templates/dotnet](pse/templates/dotnet).
 Edit those files to customize output without changing generator logic.
 
+Key integration templates:
+
+- `Program.cs.tmpl`: entrypoint wiring for infra.
+- `AppSettings.json.tmpl` and `AppSettings.Development.json.tmpl`.
+- `DbContext.cs.tmpl` for database context.
+- `OptionsClass.cs.tmpl` for options types.
+
 ## How capability selection works
 
 - Presets provide defaults based on archetype.

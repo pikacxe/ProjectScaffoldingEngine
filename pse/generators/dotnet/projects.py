@@ -33,7 +33,7 @@ def create_projects(ctx):
         ])
 
         cleanup_default_files(project_dir)
-        ensure_program(project_dir, project_name, layer)
+        ensure_program(project_dir, project_name, layer, ctx)
 
         subprocess.run([
             "dotnet", "sln", solution_path, "add", project_file
@@ -55,15 +55,78 @@ def cleanup_default_files(project_dir: str):
         os.remove(class_file)
 
 
-def ensure_program(project_dir: str, project_name: str, layer: str):
+def ensure_program(project_dir: str, project_name: str, layer: str, ctx):
     if layer not in {"API", "Presentation", "Gateway"}:
         return
 
     program_path = os.path.join(project_dir, "Program.cs")
-    content = render_template("Program.cs.tmpl", {})
+    content = render_template("Program.cs.tmpl", build_program_values(ctx))
 
     with open(program_path, "w", encoding="utf-8") as f:
         f.write(content)
+
+
+def build_program_values(ctx):
+    infra = ctx.architecture.infrastructure
+    base = ctx.architecture.project.name
+
+    using_lines = []
+    registrations = []
+    pipeline = []
+
+    if infra and (infra.database or infra.cache or infra.broker):
+        using_lines.append(f"using {base}.Application.Options;\n")
+
+    if infra and infra.database:
+        using_lines.append("using Microsoft.EntityFrameworkCore;\n")
+        using_lines.append(f"using {base}.Infrastructure.Persistence;\n")
+        registrations.extend([
+            "builder.Services.Configure<DatabaseOptions>(builder.Configuration.GetSection(\"Database\"));",
+            "builder.Services.AddDbContext<AppDbContext>(options =>",
+            "    options.UseNpgsql(builder.Configuration.GetConnectionString(\"Database\")));",
+            "",
+        ])
+
+    if infra and infra.cache:
+        registrations.extend([
+            "builder.Services.Configure<RedisOptions>(builder.Configuration.GetSection(\"Redis\"));",
+            "builder.Services.AddStackExchangeRedisCache(options =>",
+            "    options.Configuration = builder.Configuration.GetConnectionString(\"Redis\"));",
+            "",
+        ])
+
+    if infra and infra.broker:
+        using_lines.append("using MassTransit;\n")
+        registrations.extend([
+            "builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection(\"RabbitMq\"));",
+            "builder.Services.AddMassTransit(x =>",
+            "{",
+            "    x.UsingRabbitMq((context, cfg) =>",
+            "    {",
+            "        cfg.Host(builder.Configuration.GetConnectionString(\"RabbitMq\"));",
+            "    });",
+            "});",
+            "",
+        ])
+
+    using_block = "".join(using_lines)
+    registrations_block = "\n".join(registrations)
+    pipeline_block = "\n".join(pipeline)
+
+    if using_block:
+        using_block += "\n"
+
+    if registrations_block:
+        registrations_block += "\n"
+
+    if pipeline_block:
+        pipeline_block += "\n"
+
+    return {
+        "UsingLines": using_block,
+        "InfraRegistrations": registrations_block,
+        "InfraPipeline": pipeline_block,
+    }
 
 
 def add_project_references(ctx, output_dir: str, base: str, layers):

@@ -87,6 +87,7 @@ generate_dotnet(ctx)
     ├── create_solution()
     ├── create_projects()
     ├── create_structure()
+    ├── create_integration()
     ├── restore_packages()
     └── create_docker()
 ```
@@ -96,6 +97,13 @@ generate_dotnet(ctx)
 - Dockerfile generation and runtime image wiring.
 - Tied to deployment target in the architecture model.
 - Uses templates in [pse/templates/dotnet](pse/templates/dotnet).
+
+**Integration Scaffolding**
+
+- Generates `appsettings.json` and `appsettings.Development.json` for entrypoint projects.
+- Emits Options classes in `Application/Options` for Database, Redis, and RabbitMq.
+- Adds `AppDbContext` in Infrastructure when a database is declared.
+- Wires EF Core, Redis cache, and MassTransit in Program.cs using templates.
 
 **Capability System + Resolver**
 

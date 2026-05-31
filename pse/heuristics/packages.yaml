@@ -16,3 +16,18 @@ xunit:
   packages:
     - xunit
     - xunit.runner.visualstudio
+
+postgres:
+  packages:
+    - Microsoft.EntityFrameworkCore
+    - Npgsql.EntityFrameworkCore.PostgreSQL
+
+redis:
+  packages:
+    - StackExchange.Redis
+    - Microsoft.Extensions.Caching.StackExchangeRedis
+
+rabbitmq:
+  packages:
+    - MassTransit
+    - MassTransit.RabbitMQ
