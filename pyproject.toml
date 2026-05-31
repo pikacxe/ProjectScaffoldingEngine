@@ -1,0 +1,8 @@
+[project]
+name = "pse"
+version = "0.1.0"
+dependencies = [
+    "textX",
+    "textX-jinja",
+    "pyyaml"
+]

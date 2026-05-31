@@ -1,0 +1,84 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# virtual environments
+venv/
+.venv/
+env/
+
+# pytest / mypy / coverage
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# =========================
+# textX
+# =========================
+*.ast
+*.txml
+*.dot
+
+# =========================
+# IDEs
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# .NET (generated output)
+# IMPORTANT: PSE generates these
+# =========================
+**/bin/
+**/obj/
+*.sln
+*.csproj
+*.user
+*.vs/
+
+# =========================
+# PSE generated output
+# (adjust depending on your workflow)
+# =========================
+test/
+output/
+out/
+generated/
+dist-output/
+
+# solution artifacts
+*.dll
+*.exe
+*.pdb
+
+# docker artifacts (optional safety)
+docker-compose.override.yml
+
+# =========================
+# logs
+# =========================
+*.log
+logs/
+
+# =========================
+# temp files
+# =========================
+tmp/
+temp/
