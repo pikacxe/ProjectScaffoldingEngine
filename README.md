@@ -30,7 +30,6 @@ PSE generates:
 * Docker configurations
 * CI/CD pipelines
 * Infrastructure manifests
-* Documentation
 * Tests
 
 ---
@@ -56,7 +55,7 @@ Generators (backend emission)
 **DSL (Grammar Layer)**
 
 - Clean, constrained DSL in `pse.tx`.
-- Constructs: Project, Archetype, Contexts, Entities, ValueObjects, Aggregates, Infrastructure, Deployment.
+- Constructs: Project, Archetype, Capabilities, Contexts, Entities, ValueObjects, Aggregates, Infrastructure, Deployment.
 - No packages/frameworks/CI/CD in DSL; intent only.
 
 **Architecture Model (Core IR)**
@@ -87,6 +86,7 @@ Generators (backend emission)
 generate_dotnet(ctx)
     ├── create_solution()
     ├── create_projects()
+    ├── create_structure()
     ├── restore_packages()
     └── create_docker()
 ```
@@ -95,8 +95,9 @@ generate_dotnet(ctx)
 
 - Dockerfile generation and runtime image wiring.
 - Tied to deployment target in the architecture model.
+- Uses templates in [pse/templates/dotnet](pse/templates/dotnet).
 
-**Capability System + Resolver (Major Milestone)**
+**Capability System + Resolver**
 
 - Capabilities represent abstract needs (cqrs, logging, validation, database, cache, messaging).
 - Resolver applies archetype defaults, infers from infrastructure, and falls back to defaults.
@@ -139,7 +140,6 @@ The missing brain layer is package resolution and conflict solving:
 - Capability-to-package mapping.
 - Version conflict resolution.
 - Dependency collision handling.
-- Project-level `csproj` composition.
 - Transitive dependency reasoning.
 
 ### DSL
@@ -152,6 +152,12 @@ Example:
 Project StoreApi target=dotnet {
 
     Archetype WebApi
+
+    Capabilities {
+        Capability Logging
+        Capability Validation
+        Capability Mapping
+    }
 
     Context Orders {
 
@@ -178,6 +184,23 @@ Project StoreApi target=dotnet {
 
     Deployment Docker
 }
+```
+
+Samples:
+
+- Basic DSL (no explicit capabilities): [pse/sample_basic.pse](pse/sample_basic.pse)
+- DSL with explicit capabilities: [pse/sample_with_capabilities.pse](pse/sample_with_capabilities.pse)
+
+### Templates
+
+All emitted content is rendered from templates in [pse/templates/dotnet](pse/templates/dotnet). Edit those files to customize Program.cs, controllers, repositories, Docker artifacts, and class skeletons.
+
+### Running
+
+Run the generator from [pse/run.py](pse/run.py). It accepts a DSL file and output directory:
+
+```bash
+python run.py sample_with_capabilities.pse -o ./sample_output
 ```
 
 ---
@@ -528,7 +551,7 @@ pse/
 ### Phase 3
 
 * Kubernetes support
-* Terraform support
+* DockerSwarm support
 * Java generator
 * Multi-service architectures
 
