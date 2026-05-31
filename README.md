@@ -1,167 +1,539 @@
-# Project Scaffolding Engine
+# Project Scaffolding Engine (PSE)
 
-PSE uses textX (a Python DSL framework) to define and generate standardized .NET projects following Domain-Driven Design (DDD). It supports multi-language targets (e.g., Java), Docker/Docker Compose, git repos, package dependencies, naming conventions, and GitHub Actions CI/CD workflows.
+PSE is a Domain-Driven Design (DDD) architecture scaffolding engine built on top of textX.
 
-### Quick Start
+Instead of generating folders and files directly, PSE allows developers to describe software architecture using a domain-specific language (DSL). The engine applies architectural heuristics, technology presets, and generation plugins to produce production-ready project structures.
 
-Install
-```bash
-pip install textX[cli] textX-jinja
-```
-### Usage
+The goal is to provide a consistent, maintainable starting point for modern software projects while remaining technology-agnostic and future-proof.
 
-- Save grammar as projectx.tx.
+---
 
-- Write your project as myproj.projx.
+## Vision
 
-- Generate: textx generate myproj.projx dotnet --output-dir ./output.
+PSE aims to become:
 
-### Grammar (projectx.tx)
+> Terraform for software architecture.
 
-```text
-Project: 'Project' name=ID target=('dotnet'|'java')? '{'
-         projects*=SubProject
-         packages*=Package
-         docker?=Docker
-         compose?=Compose
-         ci?=CI
-         git?=GitRepo
-       '}' ;
+Developers describe:
 
-SubProject: layer=ID name=ID '{' folders*=[ID] '}' ;
-Package: 'package' name=ID version=VERSION ;
-Docker: 'docker' image=STRING ports*=[INT:INT] volumes*=[STRING:STRING] ;
-Compose: 'compose' '{' services*=[Service] '}' ;
-Service: name=ID image=STRING? ports*=[INT:INT] depends*=[ID] env*=[ID:STRING] ;
-CI: 'ci' triggers*=['push'|'pull_request'] jobs*=[Job] ;
-Job: name=ID steps*=[Step] ;
-Step: name=ID cmd=STRING ;
-GitRepo: 'git' url=STRING ('init')? branch=ID? ;
+* Business domains
+* Bounded contexts
+* Entities
+* APIs
+* Infrastructure
+* Deployment requirements
 
-```
-### Sample DSL (example.pse)
+PSE generates:
+
+* Solution structure
+* Source projects
+* Docker configurations
+* CI/CD pipelines
+* Infrastructure manifests
+* Documentation
+* Tests
+
+---
+
+## Architecture
+
+PSE follows a layered architecture.
 
 ```text
-Project MySolution target=dotnet {
-  Domain: Core { Entities, ValueObjects, Repositories }
-  Application: Services { UseCases, DTOs }
-  Infrastructure: Api { Controllers, Middleware }
-  
-  package MediatR 12.0.1
-  package AutoMapper 12.0.1
-  
-  docker image="mcr.microsoft.com/dotnet/sdk:8.0" 
-         ports=[8080:80] 
-         volumes=["./app:/app", "./logs:/logs"];
-  
-  compose {
-    api name=api image="myapi" ports=[8080:80] depends=[db];
-    db name=db image="postgres:15" volumes=["./pgdata:/var/lib/postgresql/data"];
-  }
-  
-  ci triggers=['push','pull_request'] {
-    build name=build steps=[
-      name=restore cmd="dotnet restore",
-      name=build cmd="dotnet build --no-restore"
-    ];
-    test name=test steps=[
-      name=tests cmd="dotnet test --no-build --verbosity normal"
-    ];
-  }
-  
-  git "https://github.com/myorg/mysol" init main
+DSL Source
+    ↓
+AST (textX)
+    ↓
+Architecture Model (semantic IR)
+    ↓
+Capability Graph (intent)
+    ↓
+Dependency Graph (ordering)
+    ↓
+Generators (backend emission)
+```
+
+**DSL (Grammar Layer)**
+
+- Clean, constrained DSL in `pse.tx`.
+- Constructs: Project, Archetype, Contexts, Entities, ValueObjects, Aggregates, Infrastructure, Deployment.
+- No packages/frameworks/CI/CD in DSL; intent only.
+
+**Architecture Model (Core IR)**
+
+- Normalized `ArchitectureModel` with project metadata, contexts, entities, value objects, aggregates, infrastructure, and deployment.
+- Decouples DSL from generators and enables multi-language targets.
+
+**Heuristics System (Externalized Intelligence)**
+
+- YAML registries: `archetypes.yaml`, `presets.yaml`, `packages.yaml`, `versions.yaml`, `capabilities.yaml`.
+- Maps archetypes to capabilities, capabilities to implementations, implementations to packages and versions.
+
+**Bootstrap System (Execution Orchestrator)**
+
+- Validates environment, loads grammar, parses DSL, builds `ArchitectureModel`, loads heuristics.
+- Builds `GenerationContext` and dispatches generators.
+- Fail-fast, deterministic execution flow.
+- Writes a run manifest (`pse.manifest.json`) with DSL input, resolved capabilities, timestamps, and status.
+
+**GenerationContext (Unified Generator Contract)**
+
+- Shared contract for all generators: architecture model, heuristics, output path, options, logging.
+- Removes direct dependency on textX models in generators.
+
+**Dotnet Generator (Pipeline-Based)**
+
+```text
+generate_dotnet(ctx)
+    ├── create_solution()
+    ├── create_projects()
+    ├── restore_packages()
+    └── create_docker()
+```
+
+**Docker Generation (Basic Infrastructure Output)**
+
+- Dockerfile generation and runtime image wiring.
+- Tied to deployment target in the architecture model.
+
+**Capability System + Resolver (Major Milestone)**
+
+- Capabilities represent abstract needs (cqrs, logging, validation, database, cache, messaging).
+- Resolver applies archetype defaults, infers from infrastructure, and falls back to defaults.
+- Produces a `CapabilityGraph` used by generators.
+
+**Dependency Graph System (Ordering Engine)**
+
+- Directed dependency graph with topological sorting.
+- Enables deterministic capability sequencing and future orchestration correctness.
+
+**Integration Path**
+
+```text
+ArchitectureModel
+    ↓
+CapabilityGraph
+    ↓
+DependencyGraph
+    ↓
+GenerationContext
+```
+
+Generators are now dumb executors; intelligence is centralized in the resolver layer.
+
+### What This Is Now
+
+PSE is an architecture compilation engine and a declarative, heuristic-driven scaffolding system.
+
+### Future-Proofing Already in Place
+
+- Capability swapping (MediatR → Wolverine, Serilog → built-in logging).
+- Multi-language targets via the same semantic model.
+- Infrastructure scaling (Docker now, Kubernetes next).
+- Archetype evolution (Clean Architecture, Modular Monolith, Microservices).
+
+### Next Milestone
+
+The missing brain layer is package resolution and conflict solving:
+
+- Capability-to-package mapping.
+- Version conflict resolution.
+- Dependency collision handling.
+- Project-level `csproj` composition.
+- Transitive dependency reasoning.
+
+### DSL
+
+The DSL describes architecture and business requirements.
+
+Example:
+
+```text
+Project StoreApi target=dotnet {
+
+    Archetype WebApi
+
+    Context Orders {
+
+        Entity Order {
+            Guid Id
+            DateTime CreatedAt
+        }
+
+        Entity OrderItem {
+            Guid ProductId
+            int Quantity
+        }
+
+        Aggregate OrderAggregate {
+            root Order
+            children OrderItem
+        }
+    }
+
+    Infrastructure {
+        Database PostgreSQL
+        Cache Redis
+    }
+
+    Deployment Docker
 }
-
 ```
-### Generators
 
-.NET Generator Example (generators/dotnet_generator.py)
-```python
-from textx import metamodel_from_file
-from textxjinja import textx_jinja_generator
-import subprocess
-import os
+---
 
-def generate_dotnet(metamodel, model, output_path, overwrite=True):
-    context = {'model': model}
-    textx_jinja_generator('templates/dotnet', output_path, context, overwrite)
-    
-    os.chdir(output_path)
-    subprocess.run(["dotnet", "new", "sln", "-n", model.name])
-    
-    for proj in model.projects:
-        proj_path = f"{proj.layer}.{proj.name}"
-        subprocess.run(["dotnet", "new", "classlib", "-o", proj_path])
-        subprocess.run(["dotnet", "sln", "add", proj_path])
-    
-    # Add packages to first project (or make configurable)
-    target_proj = model.projects[0].layer + "." + model.projects[0].name
-    for pkg in model.packages:
-        subprocess.run(["dotnet", "add", target_proj, "package", f"{pkg.name}"])
-    
-    subprocess.run(["git", "init"])
-    if model.git:
-        subprocess.run(["git", "remote", "add", "origin", model.git.url])
-        if model.git.init and model.git.branch:
-            subprocess.run(["git", "checkout", "-b", model.git.branch])
+## Core Principles
 
-mm = metamodel_from_file('projectx.tx')
-mm.register_generator('dotnet', generate_dotnet)
+### Architecture First
 
-```
-#### Java Generator
+The DSL describes architecture rather than implementation details.
 
-Swap target=java in DSL; generate Maven/Gradle, OpenJDK Dockerfile. (TODO)
-
-### Templates Folder Structure
+Avoid:
 
 ```text
-templates/dotnet/
-├── Dockerfile.j2                    # FROM {{ model.docker.image }}
-├── docker-compose.yml.j2           # volumes: "{{ svc.volumes[0] }}"
-├── {{ model.name }}.sln.j2
-├── .github/workflows/ci.yml.j2     # GitHub Actions
-└── {{ layer }}.{{ name }}/{{ name }}.csproj.j2# Project Scaffolding Engine (PSE)
+package MediatR
+package AutoMapper
 ```
 
-### .github/workflows/ci.yml.j2 - example
+Prefer:
 
 ```text
-name: CI
-on: [{% for t in model.ci.triggers %}{{t}},{% endfor %}]
-jobs:
-{% for job in model.ci.jobs %}
-  {{ job.name }}:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    {% for step in job.steps %}
-    - name: {{ step.name }}
-      run: {{ step.cmd }}
-    {% endfor %}
-{% endfor %}
-
-
+Capability CQRS
+Capability Validation
+Capability Mapping
 ```
 
-### Features
+The heuristics engine resolves capabilities to technologies.
 
-- DDD Layers: Auto-folders (Domain, App, Infra) with naming rules.
+### Technology Agnostic
 
-- Multi-Target: Switch target=java → pom.xml, Gradle.
+Technologies are selected through presets and registries.
 
-- Docker: Dynamic Dockerfile/Compose from DSL ports/volumes/services.
+Today:
 
-- Git: Init + remote setup.
-
-- Extensible: Add CI/CD, tests, validators via grammar rules/processors.
-
-### Testing
-
-```bash
-textx check example.pse
-textx parse example.pse --py-ast
+```yaml
+cqrs: mediatr
 ```
 
-### License
-[MIT](https://github.com/pikacxe/ProjectScaffoldingEngine/blob/main/LICENSE)
+Tomorrow:
+
+```yaml
+cqrs: wolverine
+```
+
+No DSL changes required.
+
+### Convention Over Configuration
+
+Reasonable defaults should generate a working project with minimal configuration.
+
+Example:
+
+```text
+Project StoreApi {
+    Archetype WebApi
+}
+```
+
+May automatically generate:
+
+* ASP.NET Core Web API
+* PostgreSQL
+* Docker
+* GitHub Actions
+* Logging
+* Validation
+* Testing
+* Health Checks
+
+Based on configured heuristics.
+
+---
+
+## Archetypes
+
+Archetypes define high-level project structures.
+
+### WebApi
+
+```text
+Presentation
+Application
+Domain
+Infrastructure
+Tests
+```
+
+### CleanArchitecture
+
+```text
+Presentation
+Application
+Domain
+Infrastructure
+```
+
+### ModularMonolith
+
+```text
+Modules
+ ├── Identity
+ ├── Orders
+ └── Billing
+```
+
+### Microservices
+
+```text
+Services
+Gateway
+Shared
+Infrastructure
+```
+
+---
+
+## Domain Modeling
+
+PSE supports modeling of:
+
+* Entities
+* Value Objects
+* Aggregates
+* Domain Events
+* Repositories
+* Bounded Contexts
+
+Example:
+
+```text
+Context Identity {
+
+    Entity User {
+        Guid Id
+        Email Email
+    }
+
+    ValueObject Email
+
+    Aggregate UserAggregate {
+        Root User
+    }
+}
+```
+
+Generated artifacts may include:
+
+* Domain entities
+* Repository interfaces
+* DTOs
+* CQRS handlers
+* Validation rules
+
+---
+
+## Infrastructure Modeling
+
+Infrastructure is described declaratively.
+
+Example:
+
+```text
+Infrastructure {
+
+    Database PostgreSQL
+
+    Cache Redis
+
+    MessageBroker RabbitMQ
+
+    ObjectStorage MinIO
+}
+```
+
+PSE generates deployment artifacts automatically.
+
+### Docker
+
+```yaml
+docker-compose.yml
+```
+
+### Kubernetes
+
+```yaml
+deployments/
+services/
+configmaps/
+```
+
+### Future Targets
+
+* Docker Compose
+* Kubernetes
+* Docker Swarm
+* Nomad
+
+---
+
+## Deployment Targets
+
+```text
+Deployment Docker
+```
+
+```text
+Deployment Kubernetes
+```
+
+```text
+Deployment DockerSwarm
+```
+
+The same architecture model can produce different deployment artifacts.
+
+---
+
+## Heuristics Engine
+
+The heuristics engine applies organizational standards and best practices.
+
+Example:
+
+```text
+Project StoreApi {
+    Archetype WebApi
+}
+```
+
+May resolve to:
+
+```yaml
+logging: serilog
+validation: fluentvalidation
+database: postgres
+testing: xunit
+deployment: docker
+```
+
+All decisions are configurable.
+
+---
+
+## Registries
+
+### Version Registry
+
+```yaml
+versions:
+
+  dotnet: 9.0
+  postgres: 17
+  redis: 8
+```
+
+### Package Registry
+
+```yaml
+mediatr:
+  package: MediatR
+  version: 13.0.0
+```
+
+### Preset Registry
+
+```yaml
+webapi:
+  logging: serilog
+  validation: fluentvalidation
+  cqrs: mediatr
+```
+
+---
+
+## Plugin System
+
+PSE is built around generator plugins.
+
+```text
+plugins/
+
+├── dotnet
+├── java
+├── docker
+├── kubernetes
+├── github_actions
+├── terraform
+```
+
+A plugin may provide:
+
+* Grammar extensions
+* Validators
+* Templates
+* Generators
+
+---
+
+## Repository Structure
+
+```text
+pse/
+
+├── grammar/
+│   └── pse.tx
+│
+├── model/
+│   └── architecture.py
+│
+├── heuristics/
+│   ├── archetypes.yaml
+│   ├── presets.yaml
+│   ├── packages.yaml
+│   └── versions.yaml
+│
+├── validators/
+│
+├── generators/
+│   ├── dotnet/
+│   ├── java/
+│   ├── docker/
+│   ├── kubernetes/
+│   └── github_actions/
+│
+├── templates/
+│
+└── tests/
+```
+
+---
+
+## Roadmap
+
+### Phase 1
+
+* DSL foundation
+* Architecture model
+* .NET generator
+* Docker generator
+* Git integration
+
+### Phase 2
+
+* Domain modeling
+* API generation
+* Validation engine
+* GitHub Actions
+
+### Phase 3
+
+* Kubernetes support
+* Terraform support
+* Java generator
+* Multi-service architectures
+
+---
+
+## License
+
+MIT
