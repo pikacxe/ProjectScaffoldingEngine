@@ -357,7 +357,7 @@ def write_csharp_class(path: str, folder: str, name: str, base_type: str = None,
 def write_repository_class(path: str, folder: str, name: str, interface_name: str):
     namespace = build_namespace(path, folder)
     domain_namespace = namespace.replace(".Infrastructure", ".Domain")
-    using_line = f"using {domain_namespace}.Repositories;\n"
+    using_line = f"using {domain_namespace};\n"
 
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
@@ -441,22 +441,12 @@ def build_properties(properties):
 
 
 def build_controller_methods(dto_type: str, id_type: str):
-    return (
-        f"    [HttpGet]\n"
-        f"    public ActionResult<List<{dto_type}>> GetAll()\n"
-        "    {\n"
-        f"        return Ok(new List<{dto_type}>());\n"
-        "    }\n\n"
-        f"    [HttpGet(\"{{id}}\")]\n"
-        f"    public ActionResult<{dto_type}> GetById({id_type} id)\n"
-        "    {\n"
-        f"        return Ok(new {dto_type}());\n"
-        "    }\n\n"
-        f"    [HttpPost]\n"
-        f"    public ActionResult<{dto_type}> Create({dto_type} request)\n"
-        "    {\n"
-        "        return CreatedAtAction(nameof(GetById), new { id = request.Id }, request);\n"
-        "    }\n"
+    return render_template(
+        "ControllerMethods.cs.tmpl",
+        {
+            "DtoType": dto_type,
+            "IdType": id_type,
+        }
     )
 
 
