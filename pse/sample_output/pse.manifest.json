@@ -1,0 +1,48 @@
+{
+  "runs": [
+    {
+      "id": "2eaaf81a-1075-44c6-a7df-10cf67e86b74",
+      "timestamp": "2026-05-31T12:55:21Z",
+      "input_file": "/home/x/Projects/ProjectScaffoldingEngine/pse/sample.pse",
+      "capabilities": [
+        {
+          "name": "cache",
+          "value": "redis",
+          "source": "inferred"
+        },
+        {
+          "name": "database",
+          "value": "postgres",
+          "source": "inferred"
+        },
+        {
+          "name": "logging",
+          "value": "serilog",
+          "source": "preset"
+        },
+        {
+          "name": "mapping",
+          "value": "mapster",
+          "source": "preset"
+        },
+        {
+          "name": "messaging",
+          "value": "rabbitmq",
+          "source": "inferred"
+        },
+        {
+          "name": "testing",
+          "value": "xunit",
+          "source": "preset"
+        },
+        {
+          "name": "validation",
+          "value": "fluentvalidation",
+          "source": "preset"
+        }
+      ],
+      "dsl": "Project StoreApi target=dotnet {\n\n    Archetype WebApi\n\n    Context Orders {\n\n        Entity Order {\n            Guid Id\n            DateTime CreatedAt\n            String Status\n        }\n\n        Entity OrderItem {\n            Guid ProductId\n            Int Quantity\n        }\n\n        Aggregate OrderAggregate {\n            root Order\n            children OrderItem\n        }\n    }\n\n    Context Identity {\n\n        Entity User {\n            Guid Id\n            String Email\n        }\n\n        ValueObject Email {\n            String Value\n        }\n    }\n\n    Infrastructure {\n        Database PostgreSQL\n        Cache Redis\n        MessageBroker RabbitMQ\n    }\n\n    Deployment Docker\n}",
+      "status": "completed"
+    }
+  ]
+}

@@ -48,8 +48,6 @@ Thumbs.db
 # =========================
 **/bin/
 **/obj/
-*.sln
-*.csproj
 *.user
 *.vs/
 
