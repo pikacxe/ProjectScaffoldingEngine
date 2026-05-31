@@ -1,5 +1,6 @@
 from .solution import create_solution
 from .projects import create_projects
+from .structure import create_structure
 from .nuget import restore_packages
 from .docker import create_docker
 
@@ -10,6 +11,7 @@ def generate_dotnet(ctx):
 
     create_solution(ctx)
     create_projects(ctx)
+    create_structure(ctx)
     restore_packages(ctx)
     create_docker(ctx)
 

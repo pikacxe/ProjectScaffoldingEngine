@@ -1,5 +1,6 @@
 Project: 'Project' name=ID ('target' '=' target=Target)? '{'
     archetype=Archetype
+    capabilities=Capabilities?
     contexts*=Context
     infrastructure=Infrastructure?
     deployment=Deployment?
@@ -7,6 +8,14 @@ Project: 'Project' name=ID ('target' '=' target=Target)? '{'
 
 Archetype:
     'Archetype' value=ID;
+
+Capabilities:
+    'Capabilities' '{'
+        capabilities*=CapabilityDecl
+    '}';
+
+CapabilityDecl:
+    'Capability' name=ID;
 
 Target:
     'dotnet' | 'java';

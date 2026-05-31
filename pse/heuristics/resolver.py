@@ -1,3 +1,5 @@
+import yaml
+
 from model.capability import CapabilityGraph, Capability
 
 
@@ -16,6 +18,20 @@ def resolve_capabilities(ctx):
             name=k,
             value=v,
             source="preset"
+        )
+
+    # 1b. apply explicit capability selections
+    explicit = getattr(ctx.architecture, "capabilities", []) or []
+    registry = load_capability_registry()
+
+    for cap_name in explicit:
+        name = cap_name.lower()
+        implementation = pick_default_implementation(name, caps, registry)
+
+        graph.capabilities[name] = Capability(
+            name=name,
+            value=implementation or "unresolved",
+            source="explicit"
         )
 
     # 2. infer from infrastructure
@@ -55,3 +71,19 @@ def resolve_capabilities(ctx):
     )
 
     return graph
+
+
+def load_capability_registry():
+    with open("heuristics/capabilities.yaml") as f:
+        return yaml.safe_load(f) or {}
+
+
+def pick_default_implementation(name, preset_caps, registry):
+    if name in preset_caps:
+        return preset_caps[name]
+
+    implementations = registry.get(name, {})
+    if len(implementations) == 1:
+        return next(iter(implementations.keys()))
+
+    return None

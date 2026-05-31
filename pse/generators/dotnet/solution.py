@@ -7,6 +7,6 @@ def create_solution(ctx):
     subprocess.run([
         "dotnet", "new", "sln",
         "-n", name,
-        "--format", "sln",
+        "--format", "slnx",
         "--force"
     ], cwd=ctx.output_dir)

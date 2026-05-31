@@ -1,0 +1,37 @@
+Project StoreApi target=dotnet {
+
+    Archetype WebApi
+
+    Capabilities {
+        Capability Logging
+        Capability Validation
+        Capability Mapping
+        Capability Testing
+    }
+
+    Context Orders {
+
+        Entity Order {
+            Guid Id
+            DateTime CreatedAt
+            String Status
+        }
+
+        Entity OrderItem {
+            Guid ProductId
+            Int Quantity
+        }
+
+        Aggregate OrderAggregate {
+            root Order
+            children OrderItem
+        }
+    }
+
+    Infrastructure {
+        Database PostgreSQL
+        Cache Redis
+    }
+
+    Deployment Docker
+}

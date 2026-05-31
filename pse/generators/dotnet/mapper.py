@@ -21,6 +21,7 @@ def map_model_to_architecture(model):
             archetype=model.archetype.value,
             target=model.target or "dotnet"
         ),
+        capabilities=map_capabilities(model.capabilities),
         contexts=[
             Context(
                 name=c.name,
@@ -52,6 +53,13 @@ def map_model_to_architecture(model):
         infrastructure=map_infra(model.infrastructure),
         deployment=map_deployment(model.deployment)
     )
+
+
+def map_capabilities(capabilities):
+    if not capabilities:
+        return []
+
+    return [c.name.lower() for c in capabilities.capabilities]
 
 
 def map_infra(infra):

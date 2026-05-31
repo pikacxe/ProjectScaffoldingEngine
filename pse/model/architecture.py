@@ -70,3 +70,4 @@ class ArchitectureModel:
     contexts: List[Context]
     infrastructure: Infrastructure
     deployment: Deployment
+    capabilities: List[str] = field(default_factory=list)
