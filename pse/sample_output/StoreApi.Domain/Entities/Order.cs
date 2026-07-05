@@ -6,5 +6,5 @@ public class Order
 {
     public Guid Id { get; set; }
     public DateTime CreatedAt { get; set; }
-    public string Status { get; set; }
+    public string Status { get; set; } = string.Empty;
 }

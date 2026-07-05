@@ -1,6 +1,6 @@
 namespace StoreApi.Infrastructure.Persistence;
 
-public class DatabaseOptions
+public class PersistenceOptions
 {
     // Infrastructure persistence options.
 }

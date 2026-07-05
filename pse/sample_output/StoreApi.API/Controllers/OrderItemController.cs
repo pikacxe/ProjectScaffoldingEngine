@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
+using StoreApi.API.Dtos;
 
 namespace StoreApi.API.Controllers;
 
@@ -22,6 +23,6 @@ public class OrderItemController : ControllerBase
     [HttpPost]
     public ActionResult<OrderItemDto> Create(OrderItemDto request)
     {
-        return CreatedAtAction(nameof(GetById), new { id = request.Id }, request);
+        return CreatedAtAction(nameof(GetById), new { id = request.ProductId }, request);
     }
 }

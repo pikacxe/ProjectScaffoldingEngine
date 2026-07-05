@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
+using StoreApi.API.Dtos;
 
 namespace StoreApi.API.Controllers;
 
