@@ -36,6 +36,8 @@ def run_pse(input_file: str, output_dir: str):
         model, input_path = load_model(mm, input_file)
         dsl_text = read_dsl_input(input_path)
 
+        run_id = write_run_manifest(output_dir, input_path, dsl_text)
+
         print("Validating model...\n")
         validate_model(model, dsl_text)
 
@@ -60,13 +62,13 @@ def run_pse(input_file: str, output_dir: str):
         print("Building dependency graph...\n")
         dep_graph = build_dependency_graph(cap_graph)
 
+        update_run_manifest(output_dir, run_id, status="started", cap_graph=cap_graph)
+
         ctx.capabilities = cap_graph
         ctx.dependency_graph = dep_graph
         print("Capabilities resolved and dependency graph built.\n")
         print(f"Capabilities: {list(cap_graph.capabilities.keys())}\n")
         print(f"Dependency graph: {dep_graph}\n")
-
-        run_id = write_run_manifest(output_dir, input_path, dsl_text, cap_graph)
 
         print("Dispatching generator...\n")
         dispatch_generator(ctx)
@@ -74,7 +76,7 @@ def run_pse(input_file: str, output_dir: str):
 
     except Exception as e:
         if run_id:
-            update_run_status(output_dir, run_id, "failed")
+            update_run_status(output_dir, run_id, "failed", error=format_user_error(e))
         print(f"\nError during PSE bootstrap:\n{format_user_error(e)}")
 
 
@@ -114,7 +116,7 @@ def read_dsl_input(input_path: str):
         return f.read()
 
 
-def write_run_manifest(output_dir: str, input_path: str, dsl_text: str, cap_graph):
+def write_run_manifest(output_dir: str, input_path: str, dsl_text: str, cap_graph=None):
     manifest_path = os.path.join(output_dir, "pse.manifest.json")
     run_id = str(uuid.uuid4())
     timestamp = datetime.utcnow().isoformat(timespec="seconds") + "Z"
@@ -123,16 +125,11 @@ def write_run_manifest(output_dir: str, input_path: str, dsl_text: str, cap_grap
         "id": run_id,
         "timestamp": timestamp,
         "input_file": os.path.abspath(input_path),
-        "capabilities": [
-            {
-                "name": name,
-                "value": cap.value,
-                "source": cap.source
-            }
-            for name, cap in sorted(cap_graph.capabilities.items())
-        ],
+        "capabilities": serialize_capabilities(cap_graph),
         "dsl": dsl_text,
-        "status": "started"
+        "status": "started",
+        "error": None,
+        "finished_at": None,
     }
 
     data = {"runs": []}
@@ -152,7 +149,7 @@ def write_run_manifest(output_dir: str, input_path: str, dsl_text: str, cap_grap
     return run_id
 
 
-def update_run_status(output_dir: str, run_id: str, status: str):
+def update_run_status(output_dir: str, run_id: str, status: str, error: str = None, cap_graph=None):
     if not run_id:
         return
 
@@ -169,10 +166,57 @@ def update_run_status(output_dir: str, run_id: str, status: str):
     for run in data.get("runs", []):
         if run.get("id") == run_id:
             run["status"] = status
+            if error is not None:
+                run["error"] = error
+            if cap_graph is not None:
+                run["capabilities"] = serialize_capabilities(cap_graph)
+            run["finished_at"] = datetime.now().isoformat(timespec="seconds") + "Z"
             break
 
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=True)
+
+
+def update_run_manifest(output_dir: str, run_id: str, status: str = None, error: str = None, cap_graph=None):
+    if not run_id:
+        return
+
+    manifest_path = os.path.join(output_dir, "pse.manifest.json")
+    if not os.path.exists(manifest_path):
+        return
+
+    try:
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError:
+        return
+
+    for run in data.get("runs", []):
+        if run.get("id") == run_id:
+            if status is not None:
+                run["status"] = status
+            if error is not None:
+                run["error"] = error
+            if cap_graph is not None:
+                run["capabilities"] = serialize_capabilities(cap_graph)
+            break
+
+    with open(manifest_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=True)
+
+
+def serialize_capabilities(cap_graph):
+    if not cap_graph:
+        return []
+
+    return [
+        {
+            "name": name,
+            "value": cap.value,
+            "source": cap.source
+        }
+        for name, cap in sorted(cap_graph.capabilities.items())
+    ]
 
 
 def dispatch_generator(ctx: GenerationContext):
