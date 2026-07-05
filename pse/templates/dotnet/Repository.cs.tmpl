@@ -1,7 +1,34 @@
-using {{DomainNamespace}};
+using System;
+using System.Collections.Generic;
+using {{DomainNamespace}}.Entities;
+using {{DomainNamespace}}.Repositories;
 
 namespace {{Namespace}};
 
 public class {{ClassName}} : {{InterfaceName}}
 {
+	public IEnumerable<{{EntityName}}> GetAll()
+	{
+		return Array.Empty<{{EntityName}}>();
+	}
+
+	public {{EntityName}}? GetById(Guid id)
+	{
+		return null;
+	}
+
+	public void Create({{EntityName}} entity)
+	{
+		throw new NotImplementedException();
+	}
+
+	public void Update({{EntityName}} entity)
+	{
+		throw new NotImplementedException();
+	}
+
+	public void Delete(Guid id)
+	{
+		throw new NotImplementedException();
+	}
 }
