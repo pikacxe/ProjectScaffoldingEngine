@@ -33,6 +33,7 @@ def create_projects(ctx):
         ])
 
         cleanup_default_files(project_dir)
+        cleanup_webapi_package_refs(project_dir, template)
         ensure_program(project_dir, project_name, layer, ctx)
 
         subprocess.run([
@@ -47,6 +48,30 @@ def project_template(layer: str):
         return "webapi"
 
     return "classlib"
+
+
+def cleanup_webapi_package_refs(project_dir: str, template: str):
+    if template != "webapi":
+        return
+
+    project_file = next(
+        (os.path.join(project_dir, name) for name in os.listdir(project_dir) if name.endswith(".csproj")),
+        None,
+    )
+
+    if not project_file:
+        return
+
+    with open(project_file, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    filtered = [line for line in lines if "Microsoft.AspNetCore.OpenApi" not in line]
+
+    if filtered == lines:
+        return
+
+    with open(project_file, "w", encoding="utf-8") as f:
+        f.writelines(filtered)
 
 
 def cleanup_default_files(project_dir: str):
@@ -149,9 +174,19 @@ def add_project_references(ctx, output_dir: str, base: str, layers):
 
     if "API" in layers:
         add_ref("API", "Application")
+        if ctx.architecture.infrastructure and (ctx.architecture.infrastructure.database or ctx.architecture.infrastructure.cache or ctx.architecture.infrastructure.broker):
+            add_ref("API", "Infrastructure")
 
     if "Application" in layers:
         add_ref("Application", "Domain")
+
+    if "Presentation" in layers:
+        if ctx.architecture.infrastructure and (ctx.architecture.infrastructure.database or ctx.architecture.infrastructure.cache or ctx.architecture.infrastructure.broker):
+            add_ref("Presentation", "Infrastructure")
+
+    if "Gateway" in layers:
+        if ctx.architecture.infrastructure and (ctx.architecture.infrastructure.database or ctx.architecture.infrastructure.cache or ctx.architecture.infrastructure.broker):
+            add_ref("Gateway", "Infrastructure")
 
     if "Infrastructure" in layers:
         add_ref("Infrastructure", "Application")

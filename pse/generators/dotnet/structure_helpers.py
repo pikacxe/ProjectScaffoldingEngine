@@ -72,7 +72,10 @@ def build_properties(properties):
     for prop_name, prop_type in properties.items():
         cs_type, requires_system = map_type(prop_type)
         needs_system = needs_system or requires_system
-        lines.append(f"    public {cs_type} {prop_name} {{ get; set; }}\n")
+        if cs_type == "string":
+            lines.append(f"    public {cs_type} {prop_name} {{ get; set; }} = string.Empty;\n")
+        else:
+            lines.append(f"    public {cs_type} {prop_name} {{ get; set; }}\n")
 
     return "".join(lines), needs_system
 
@@ -109,3 +112,14 @@ def pick_id_type(properties):
             return map_type(prop_type)[0]
 
     return "Guid"
+
+
+def pick_id_property_name(properties):
+    if not properties:
+        return "Id"
+
+    for prop_name in properties.keys():
+        if prop_name.lower() == "id":
+            return prop_name
+
+    return next(iter(properties.keys()))

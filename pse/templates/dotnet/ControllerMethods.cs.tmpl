@@ -13,5 +13,5 @@
     [HttpPost]
     public ActionResult<{{DtoType}}> Create({{DtoType}} request)
     {
-        return CreatedAtAction(nameof(GetById), new { id = request.Id }, request);
+        return CreatedAtAction(nameof(GetById), new { id = request.{{IdentifierPropertyName}} }, request);
     }

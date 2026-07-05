@@ -1,7 +1,7 @@
 import os
 
 from .template_loader import render_template
-from .structure_helpers import build_namespace, build_properties, pick_id_type
+from .structure_helpers import build_namespace, build_properties, pick_id_property_name, pick_id_type
 
 
 def write_csharp_class(path: str, folder: str, name: str, base_type: str = None, properties=None, is_interface: bool = False):
@@ -68,19 +68,22 @@ def write_controller(path: str, folder: str, name: str, entity, dto_name: str):
         return
 
     namespace = build_namespace(path, folder)
+    dto_namespace = build_namespace(path, "Dtos")
     id_type = pick_id_type(entity.properties)
+    id_property_name = pick_id_property_name(entity.properties)
     methods = render_template(
         "ControllerMethods.cs.tmpl",
         {
             "DtoType": dto_name,
             "IdType": id_type,
+            "IdentifierPropertyName": id_property_name,
         },
     )
 
     content = render_template(
         "Controller.cs.tmpl",
         {
-            "UsingLines": "using System.Collections.Generic;\n\n",
+            "UsingLines": f"using System.Collections.Generic;\nusing {dto_namespace};\n\n",
             "Namespace": namespace,
             "ControllerName": name,
             "Methods": methods,
