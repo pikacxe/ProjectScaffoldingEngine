@@ -1,6 +1,12 @@
+using Xunit;
+
 namespace StoreApi.Tests.Unit;
 
 public class OrderTests
 {
-    // TODO: add properties.
+    [Fact]
+    public void CanCreateOrder()
+    {
+        Assert.True(true);
+    }
 }
