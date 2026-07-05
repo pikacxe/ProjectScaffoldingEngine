@@ -1,7 +1,8 @@
 import os
 
 from .structure_helpers import ensure_dir, ensure_placeholder, remove_placeholder
-from .structure_writers import write_controller, write_csharp_class, write_repository_class
+from .structure_writers import write_controller, write_csharp_class, write_repository_class, write_repository_interface, write_test_class
+from .structure_helpers import pick_id_type
 
 
 def create_api_structure(api_root: str, contexts):
@@ -125,7 +126,7 @@ def create_domain_files(root: str, contexts, root_prefix: str = ""):
             write_csharp_class(entity_path, "Entities", entity.name, properties=entity.properties)
             repo_name = f"I{entity.name}Repository"
             repo_path = os.path.join(root, root_prefix, "Repositories", f"{repo_name}.cs")
-            write_csharp_class(repo_path, "Repositories", repo_name, is_interface=True)
+            write_repository_interface(repo_path, "Repositories", repo_name, entity.name, pick_id_type(entity.properties))
             created = True
 
         for value_object in context.value_objects:
@@ -145,7 +146,7 @@ def create_repository_implementations(root: str, contexts, root_prefix: str = ""
             repo_name = f"{entity.name}Repository"
             repo_path = os.path.join(root, root_prefix, "Repositories", f"{repo_name}.cs")
             interface_name = f"I{entity.name}Repository"
-            write_repository_class(repo_path, "Repositories", repo_name, interface_name)
+            write_repository_class(repo_path, "Repositories", repo_name, interface_name, entity.name, pick_id_type(entity.properties))
             created = True
 
     return created
@@ -159,7 +160,7 @@ def create_tests_files(root: str, contexts):
         for entity in context.entities:
             test_name = f"{entity.name}Tests"
             test_path = os.path.join(root, "Unit", f"{test_name}.cs")
-            write_csharp_class(test_path, "Unit", test_name)
+            write_test_class(test_path, "Unit", test_name, entity.name)
             created = True
 
     return created
