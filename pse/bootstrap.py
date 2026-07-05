@@ -12,6 +12,7 @@ from heuristics.loader import load_all_heuristics
 from heuristics.resolver import resolve_capabilities
 from heuristics.dependency_builder import build_dependency_graph
 from model.generation_context import GenerationContext
+from validation import format_user_error, validate_model
 
 BASE_DIR = os.path.dirname(__file__)
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
@@ -33,6 +34,10 @@ def run_pse(input_file: str, output_dir: str):
 
         print("Loading model...\n")
         model, input_path = load_model(mm, input_file)
+        dsl_text = read_dsl_input(input_path)
+
+        print("Validating model...\n")
+        validate_model(model, dsl_text)
 
         print("Loading heuristics...\n")
         heuristics = load_all_heuristics()
@@ -61,7 +66,6 @@ def run_pse(input_file: str, output_dir: str):
         print(f"Capabilities: {list(cap_graph.capabilities.keys())}\n")
         print(f"Dependency graph: {dep_graph}\n")
 
-        dsl_text = read_dsl_input(input_path)
         run_id = write_run_manifest(output_dir, input_path, dsl_text, cap_graph)
 
         print("Dispatching generator...\n")
@@ -71,7 +75,7 @@ def run_pse(input_file: str, output_dir: str):
     except Exception as e:
         if run_id:
             update_run_status(output_dir, run_id, "failed")
-        print(f"\nError during PSE bootstrap: {e}")
+        print(f"\nError during PSE bootstrap:\n{format_user_error(e)}")
 
 
 def validate_environment():
