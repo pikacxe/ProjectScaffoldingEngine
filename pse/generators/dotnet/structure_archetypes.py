@@ -40,7 +40,7 @@ def create_modular_monolith_structure(modules_root: str, contexts):
 
         create_use_case_files(modules_root, [selected_context], root_prefix=f"{module_root}/Application")
         create_domain_files(modules_root, [selected_context], root_prefix=f"{module_root}/Domain")
-        ensure_placeholder(modules_root, f"{module_root}/Infrastructure/Persistence", "DatabaseOptions.cs", "Module persistence options")
+        ensure_placeholder(modules_root, f"{module_root}/Infrastructure/Persistence", "PersistenceOptions.cs", "Module persistence options")
         create_repository_implementations(modules_root, [selected_context], root_prefix=f"{module_root}/Infrastructure")
 
 
@@ -80,5 +80,5 @@ def create_microservices_structure(services_root: str, gateway_root: str, shared
         create_context_api_files(services_root, [selected_context], root_prefix=f"{service_root}/API")
         create_use_case_files(services_root, [selected_context], root_prefix=f"{service_root}/Application")
         create_domain_files(services_root, [selected_context], root_prefix=f"{service_root}/Domain")
-        ensure_placeholder(services_root, f"{service_root}/Infrastructure/Persistence", "DatabaseOptions.cs", "Service persistence options")
+        ensure_placeholder(services_root, f"{service_root}/Infrastructure/Persistence", "PersistenceOptions.cs", "Service persistence options")
         create_repository_implementations(services_root, [selected_context], root_prefix=f"{service_root}/Infrastructure")

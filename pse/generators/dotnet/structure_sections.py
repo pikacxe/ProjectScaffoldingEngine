@@ -60,7 +60,7 @@ def create_infrastructure_structure(infra_root: str, contexts):
     ensure_dir(infra_root, "Persistence")
     ensure_dir(infra_root, "Repositories")
     ensure_dir(infra_root, "Messaging")
-    ensure_placeholder(infra_root, "Persistence", "DatabaseOptions.cs", "Infrastructure persistence options")
+    ensure_placeholder(infra_root, "Persistence", "PersistenceOptions.cs", "Infrastructure persistence options")
     ensure_placeholder(infra_root, "Messaging", "MessageBusOptions.cs", "Infrastructure messaging options")
 
     created = create_repository_implementations(infra_root, contexts)
