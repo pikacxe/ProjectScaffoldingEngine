@@ -27,6 +27,8 @@ PSE generates:
 
 * Solution structure
 * Source projects
+* Thin controllers wired to repositories with generic CRUD starters
+* Domain repository interfaces and infrastructure implementations
 * Docker configurations
 * CI/CD pipelines
 * Infrastructure manifests
@@ -71,9 +73,10 @@ Generators (backend emission)
 **Bootstrap System (Execution Orchestrator)**
 
 - Validates environment, loads grammar, parses DSL, builds `ArchitectureModel`, loads heuristics.
+- Performs semantic validation on the parsed DSL before generation.
 - Builds `GenerationContext` and dispatches generators.
 - Fail-fast, deterministic execution flow.
-- Writes a run manifest (`pse.manifest.json`) with DSL input, resolved capabilities, timestamps, and status.
+- Writes a run manifest (`pse.manifest.json`) with DSL input, resolved capabilities, timestamps, status, error text, and finish time.
 
 **GenerationContext (Unified Generator Contract)**
 
@@ -104,6 +107,18 @@ generate_dotnet(ctx)
 - Emits Options classes in `Application/Options` for Database, Redis, and RabbitMq.
 - Adds `AppDbContext` in Infrastructure when a database is declared.
 - Wires EF Core, Redis cache, and MassTransit in Program.cs using templates.
+
+**Controller and Repository Scaffolding**
+
+- Generates thin API controllers that inject the entity repository.
+- Emits CRUD controller actions: `GetAll`, `GetById`, `Create`, `Update`, and `Delete`.
+- Generates domain repository interfaces plus infrastructure repository stubs with matching CRUD methods.
+- Keeps the controller-to-repository mapping generic with simple entity/DTO conversion helpers.
+
+**Test Scaffolding**
+
+- Generates xUnit placeholder tests per entity.
+- Uses one passing fact per test class so the test project starts in a runnable state.
 
 **Capability System + Resolver**
 
@@ -201,7 +216,14 @@ Samples:
 
 ### Templates
 
-All emitted content is rendered from templates in [pse/templates/dotnet](pse/templates/dotnet). Edit those files to customize Program.cs, controllers, repositories, Docker artifacts, and class skeletons.
+All emitted content is rendered from templates in [pse/templates/dotnet](pse/templates/dotnet). Edit those files to customize Program.cs, controllers, repositories, Docker artifacts, test stubs, and class skeletons.
+
+### Generated Output Notes
+
+- `pse.manifest.json` is append-only and records `status`, `error`, and `finished_at` for each run.
+- Controllers are intentionally thin and depend on repositories rather than application services.
+- Repository implementations are generic stubs that are meant as a starting point, not final data access code.
+- Test classes are placeholder xUnit facts, intended to be replaced with real assertions later.
 
 ### Running
 

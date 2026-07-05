@@ -105,6 +105,9 @@ Key integration templates:
 - `AppSettings.json.tmpl` and `AppSettings.Development.json.tmpl`.
 - `DbContext.cs.tmpl` for database context.
 - `OptionsClass.cs.tmpl` for options types.
+- `Controller.cs.tmpl` and `ControllerMethods.cs.tmpl` for thin CRUD controllers that call repositories.
+- `RepositoryInterface.cs.tmpl` and `RepositoryImplementation.cs.tmpl` for generic CRUD repository scaffolding.
+- `TestClass.cs.tmpl` for xUnit placeholder tests.
 
 ## How capability selection works
 
@@ -113,7 +116,16 @@ Key integration templates:
 - DSL `Capabilities { ... }` overrides or augments presets.
 - The resolver chooses implementations from presets or defaults in the registry.
 
-The resolved capabilities are recorded in `pse.manifest.json` in the output folder.
+The resolved capabilities are recorded in `pse.manifest.json` in the output folder, along with run status, error text when generation fails, and a finish timestamp.
+
+## Generated project shape
+
+The current dotnet output is intentionally thin and generic:
+
+- API controllers inject repositories and expose a CRUD surface.
+- Domain repositories define CRUD methods per entity.
+- Infrastructure repositories provide stub implementations that are meant to be extended.
+- Test projects get a simple xUnit fact per entity so the project starts with a working shape.
 
 ## Quick run
 
