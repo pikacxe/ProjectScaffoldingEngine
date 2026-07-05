@@ -43,6 +43,52 @@
       ],
       "dsl": "Project StoreApi target=dotnet {\n\n    Archetype WebApi\n\n    Context Orders {\n\n        Entity Order {\n            Guid Id\n            DateTime CreatedAt\n            String Status\n        }\n\n        Entity OrderItem {\n            Guid ProductId\n            Int Quantity\n        }\n\n        Aggregate OrderAggregate {\n            root Order\n            children OrderItem\n        }\n    }\n\n    Context Identity {\n\n        Entity User {\n            Guid Id\n            String Email\n        }\n\n        ValueObject Email {\n            String Value\n        }\n    }\n\n    Infrastructure {\n        Database PostgreSQL\n        Cache Redis\n        MessageBroker RabbitMQ\n    }\n\n    Deployment Docker\n}",
       "status": "completed"
+    },
+    {
+      "id": "ebb2e4c1-0efb-43b5-99ba-d52998ba1749",
+      "timestamp": "2026-07-05T14:21:12Z",
+      "input_file": "/home/x/Projects/ProjectScaffoldingEngine/pse/sample.pse",
+      "capabilities": [
+        {
+          "name": "cache",
+          "value": "redis",
+          "source": "inferred"
+        },
+        {
+          "name": "database",
+          "value": "postgres",
+          "source": "inferred"
+        },
+        {
+          "name": "logging",
+          "value": "serilog",
+          "source": "preset"
+        },
+        {
+          "name": "mapping",
+          "value": "mapster",
+          "source": "preset"
+        },
+        {
+          "name": "messaging",
+          "value": "rabbitmq",
+          "source": "inferred"
+        },
+        {
+          "name": "testing",
+          "value": "xunit",
+          "source": "preset"
+        },
+        {
+          "name": "validation",
+          "value": "fluentvalidation",
+          "source": "preset"
+        }
+      ],
+      "dsl": "Project StoreApi target=dotnet {\n\n    Archetype WebApi\n\n    Context Orders {\n\n        Entity Order {\n            Guid Id\n            DateTime CreatedAt\n            String Status\n        }\n\n        Entity OrderItem {\n            Guid ProductId\n            Int Quantity\n        }\n\n        Aggregate OrderAggregate {\n            root Order\n            children OrderItem\n        }\n    }\n\n    Context Identity {\n\n        Entity User {\n            Guid Id\n            String Email\n        }\n\n        ValueObject Email {\n            String Value\n        }\n    }\n\n    Infrastructure {\n        Database PostgreSQL\n        Cache Redis\n        MessageBroker RabbitMQ\n    }\n\n    Deployment Docker\n}",
+      "status": "completed",
+      "error": null,
+      "finished_at": "2026-07-05T14:22:11Z"
     }
   ]
 }
