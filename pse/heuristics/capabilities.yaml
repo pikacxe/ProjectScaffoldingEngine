@@ -12,6 +12,14 @@ logging:
   serilog:
     depends_on: []
 
+mapping:
+  mapster:
+    depends_on: []
+
+testing:
+  xunit:
+    depends_on: []
+
 database:
   postgres:
     depends_on: []
