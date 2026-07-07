@@ -1,11 +1,11 @@
-import subprocess
+from pse.generators.dotnet.process import run_dotnet
 
 
 def create_solution(ctx):
     name = ctx.architecture.project.name
 
-    subprocess.run([
-        "dotnet", "new", "sln",
+    run_dotnet([
+        "new", "sln",
         "-n", name,
         "--format", "slnx",
         "--force"

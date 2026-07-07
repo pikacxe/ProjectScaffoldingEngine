@@ -1,9 +1,15 @@
+import os
+
 import yaml
-from model.dependency_graph import DependencyGraph
+
+from pse.model.dependency_graph import DependencyGraph
+
+
+HEURISTICS_DIR = os.path.dirname(__file__)
 
 
 def build_dependency_graph(capability_graph):
-    with open("heuristics/capabilities.yaml") as f:
+    with open(os.path.join(HEURISTICS_DIR, "capabilities.yaml"), "r", encoding="utf-8") as f:
         registry = yaml.safe_load(f)
 
     graph = DependencyGraph()

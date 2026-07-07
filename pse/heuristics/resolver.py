@@ -1,6 +1,11 @@
+import os
+
 import yaml
 
-from model.capability import CapabilityGraph, Capability
+from pse.model.capability import CapabilityGraph, Capability
+
+
+HEURISTICS_DIR = os.path.dirname(__file__)
 
 
 def resolve_capabilities(ctx):
@@ -77,7 +82,7 @@ def resolve_capabilities(ctx):
 
 
 def load_capability_registry():
-    with open("heuristics/capabilities.yaml") as f:
+    with open(os.path.join(HEURISTICS_DIR, "capabilities.yaml"), "r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
 

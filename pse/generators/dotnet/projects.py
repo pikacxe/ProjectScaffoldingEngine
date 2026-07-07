@@ -1,6 +1,6 @@
 import os
-import subprocess
 
+from pse.generators.dotnet.process import run_dotnet
 from .template_loader import render_template
 
 
@@ -26,8 +26,8 @@ def create_projects(ctx):
         project_file = os.path.join(project_dir, f"{project_name}.csproj")
         template = project_template(layer)
 
-        subprocess.run([
-            "dotnet", "new", template,
+        run_dotnet([
+            "new", template,
             "-o", project_dir,
             "--force"
         ])
@@ -36,8 +36,8 @@ def create_projects(ctx):
         cleanup_webapi_package_refs(project_dir, template)
         ensure_program(project_dir, project_name, layer, ctx)
 
-        subprocess.run([
-            "dotnet", "sln", solution_path, "add", project_file
+        run_dotnet([
+            "sln", solution_path, "add", project_file
         ], cwd=output_dir)
 
     add_project_references(ctx, output_dir, base, layers)
@@ -170,7 +170,7 @@ def add_project_references(ctx, output_dir: str, base: str, layers):
         if not os.path.exists(source) or not os.path.exists(target):
             return
 
-        subprocess.run(["dotnet", "add", source, "reference", target], cwd=output_dir)
+        run_dotnet(["add", source, "reference", target], cwd=output_dir)
 
     if "API" in layers:
         add_ref("API", "Application")
