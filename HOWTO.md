@@ -187,4 +187,3 @@ pse-vscode-extension --output dist/pse-0.1.0.vsix
 code --install-extension dist/pse-0.1.0.vsix
 ```
 
-The generated extension contributes `.pse` file recognition and TextMate syntax highlighting. It depends on the upstream `textX.textX` VS Code extension, which runs textX-LS and provides validation, completion, definitions, references, folding, symbols, and generator integration. PSE does not implement a separate LSP transport.

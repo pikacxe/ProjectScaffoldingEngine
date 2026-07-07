@@ -286,8 +286,6 @@ pse-vscode-extension --output dist/pse-0.1.0.vsix
 code --install-extension dist/pse-0.1.0.vsix
 ```
 
-The generated extension contributes `.pse` file recognition and TextMate syntax highlighting, and depends on the upstream `textX.textX` VS Code extension for textX-LS language features such as diagnostics, completion, definitions, references, folding, and symbols. Make sure VS Code/textX-LS uses the Python environment where PSE is installed.
-
 ### Generated Output Notes
 
 - `pse.manifest.json` is append-only and records `status`, `error`, and `finished_at` for each run.
