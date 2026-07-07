@@ -1,4 +1,5 @@
 import os
+from dataclasses import dataclass
 
 import yaml
 from textx.exceptions import TextXSemanticError, TextXSyntaxError
@@ -9,8 +10,26 @@ HEURISTICS_DIR = os.path.join(BASE_DIR, "heuristics")
 SUPPORTED_TARGETS = {"dotnet"}
 
 
+@dataclass(frozen=True)
+class ValidationProblem:
+    message: str
+    line: int = None
+    column: int = None
+
+    def __str__(self):
+        if self.line is None:
+            return self.message
+
+        if self.column is None:
+            return f"line {self.line}: {self.message}"
+
+        return f"line {self.line}, col {self.column}: {self.message}"
+
+
 class DslValidationError(ValueError):
-    pass
+    def __init__(self, problems):
+        self.problems = tuple(problems)
+        super().__init__(format_validation_error(self.problems))
 
 
 def validate_model(model, source_text: str = None):
@@ -19,10 +38,10 @@ def validate_model(model, source_text: str = None):
     errors.extend(validate_project(model))
     errors.extend(validate_contexts(model, source_text))
     errors.extend(validate_infrastructure(model))
-    errors.extend(validate_capabilities(model))
+    errors.extend(validate_capabilities(model, source_text))
 
     if errors:
-        raise DslValidationError(format_validation_error(errors))
+        raise DslValidationError(errors)
 
 
 def validate_project(model):
@@ -30,7 +49,11 @@ def validate_project(model):
 
     target = (getattr(model, "target", None) or "dotnet").lower()
     if target not in SUPPORTED_TARGETS:
-        errors.append(f"Project target '{getattr(model, 'target', None)}' is not supported. Supported targets: dotnet.")
+        errors.append(
+            ValidationProblem(
+                f"Project target '{getattr(model, 'target', None)}' is not supported. Supported targets: dotnet."
+            )
+        )
 
     archetype = getattr(getattr(model, "archetype", None), "value", None)
     supported_archetypes = load_supported_archetypes()
@@ -38,7 +61,9 @@ def validate_project(model):
 
     if normalized_archetype and normalized_archetype not in supported_archetypes:
         errors.append(
-            f"Archetype '{archetype}' is not recognized. Supported archetypes: {', '.join(sorted(supported_archetypes.values()))}."
+            ValidationProblem(
+                f"Archetype '{archetype}' is not recognized. Supported archetypes: {', '.join(sorted(supported_archetypes.values()))}."
+            )
         )
 
     return errors
@@ -52,13 +77,12 @@ def validate_contexts(model, source_text: str = None):
     for context in getattr(model, "contexts", []) or []:
         context_name = context.name
         normalized_context_name = normalize_name(context_name)
-        context_location = location_from_node(context, source_text)
-
         if normalized_context_name in context_names:
             errors.append(
-                format_problem(
+                problem_from_node(
                     f"Duplicate context name '{context_name}'. Context names must be unique.",
-                    context_location,
+                    context,
+                    source_text,
                 )
             )
         else:
@@ -83,12 +107,12 @@ def validate_infrastructure(model):
     for label in ("database", "cache", "broker"):
         item = getattr(infra, label, None)
         if item and not getattr(item, "type", None):
-            errors.append(f"Infrastructure {label} must specify a type.")
+            errors.append(ValidationProblem(f"Infrastructure {label} must specify a type."))
 
     return errors
 
 
-def validate_capabilities(model):
+def validate_capabilities(model, source_text: str = None):
     capabilities = getattr(model, "capabilities", None)
     explicit = getattr(capabilities, "capabilities", []) or []
     if not explicit:
@@ -102,7 +126,11 @@ def validate_capabilities(model):
         name = normalize_name(capability.name)
         if name not in available:
             errors.append(
-                f"Capability '{capability.name}' is not recognized. Available capabilities: {', '.join(sorted(registry.keys()))}."
+                problem_from_node(
+                    f"Capability '{capability.name}' is not recognized. Available capabilities: {', '.join(sorted(registry.keys()))}.",
+                    capability,
+                    source_text,
+                )
             )
 
     return errors
@@ -116,9 +144,10 @@ def validate_named_collection(context_name, item_label, items, source_text: str 
         name = normalize_name(item.name)
         if name in seen:
             errors.append(
-                format_problem(
+                problem_from_node(
                     f"Context '{context_name}' contains duplicate {item_label} name '{item.name}'.",
-                    location_from_node(item, source_text),
+                    item,
+                    source_text,
                 )
             )
         else:
@@ -132,23 +161,24 @@ def validate_aggregates(context_name, entities, aggregates, source_text: str = N
     entity_names = {normalize_name(entity.name): entity.name for entity in entities or []}
 
     for aggregate in aggregates or []:
-        aggregate_location = location_from_node(aggregate, source_text)
         root_entity = getattr(aggregate, "root", None)
         root_name = getattr(root_entity, "name", None)
         if not root_name:
             errors.append(
-                format_problem(
+                problem_from_node(
                     f"Aggregate '{aggregate.name}' in context '{context_name}' must define a root entity.",
-                    aggregate_location,
+                    aggregate,
+                    source_text,
                 )
             )
             continue
 
         if normalize_name(root_name) not in entity_names:
             errors.append(
-                format_problem(
+                problem_from_node(
                     f"Aggregate '{aggregate.name}' in context '{context_name}' references unknown root '{root_name}'.",
-                    aggregate_location,
+                    aggregate,
+                    source_text,
                 )
             )
 
@@ -158,9 +188,10 @@ def validate_aggregates(context_name, entities, aggregates, source_text: str = N
             normalized_child = normalize_name(child_name)
             if normalized_child in child_names:
                 errors.append(
-                    format_problem(
+                    problem_from_node(
                         f"Aggregate '{aggregate.name}' in context '{context_name}' contains duplicate child '{child_name}'.",
-                        aggregate_location,
+                        aggregate,
+                        source_text,
                     )
                 )
                 continue
@@ -169,9 +200,10 @@ def validate_aggregates(context_name, entities, aggregates, source_text: str = N
 
             if normalized_child not in entity_names:
                 errors.append(
-                    format_problem(
+                    problem_from_node(
                         f"Aggregate '{aggregate.name}' in context '{context_name}' references unknown child '{child_name}'.",
-                        aggregate_location,
+                        aggregate,
+                        source_text,
                     )
                 )
 
@@ -208,9 +240,10 @@ def validate_properties_for_item(context_name, item_label, item_name, properties
         normalized_type = normalize_name(property_type)
         if normalized_type not in known_types and normalized_type not in local_types:
             errors.append(
-                format_problem(
+                problem_from_node(
                     f"{item_label.title()} '{item_name}' in context '{context_name}' uses unknown property type '{property_type}' for '{property_name}'.",
-                    location_from_node(property_item, source_text),
+                    property_item,
+                    source_text,
                 )
             )
 
@@ -242,6 +275,15 @@ def collect_known_types(model):
 
 
 def location_from_node(node, source_text: str = None):
+    position = position_from_node(node, source_text)
+    if not position:
+        return None
+
+    line, column = position
+    return f"line {line}, col {column}"
+
+
+def position_from_node(node, source_text: str = None):
     if not node:
         return None
 
@@ -252,7 +294,16 @@ def location_from_node(node, source_text: str = None):
     line = source_text.count("\n", 0, position) + 1
     last_newline = source_text.rfind("\n", 0, position)
     column = position + 1 if last_newline < 0 else position - last_newline
-    return f"line {line}, col {column}"
+    return line, column
+
+
+def problem_from_node(message: str, node=None, source_text: str = None):
+    position = position_from_node(node, source_text)
+    if not position:
+        return ValidationProblem(message)
+
+    line, column = position
+    return ValidationProblem(message, line, column)
 
 
 def load_supported_archetypes():

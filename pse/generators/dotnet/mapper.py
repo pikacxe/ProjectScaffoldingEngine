@@ -1,4 +1,4 @@
-from model.architecture import (
+from pse.model.architecture import (
     ArchitectureModel,
     Project,
     Context,

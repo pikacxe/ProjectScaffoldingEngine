@@ -6,13 +6,13 @@ from datetime import datetime
 
 from textx import metamodel_from_file
 
-from generators.dotnet.generator import generate_dotnet
-from generators.dotnet.mapper import map_model_to_architecture
-from heuristics.loader import load_all_heuristics
-from heuristics.resolver import resolve_capabilities
-from heuristics.dependency_builder import build_dependency_graph
-from model.generation_context import GenerationContext
-from validation import format_user_error, validate_model
+from pse.generators.dotnet.generator import generate_dotnet
+from pse.generators.dotnet.mapper import map_model_to_architecture
+from pse.heuristics.loader import load_all_heuristics
+from pse.heuristics.resolver import resolve_capabilities
+from pse.heuristics.dependency_builder import build_dependency_graph
+from pse.model.generation_context import GenerationContext
+from pse.validation import format_user_error, validate_model
 
 BASE_DIR = os.path.dirname(__file__)
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
@@ -73,11 +73,13 @@ def run_pse(input_file: str, output_dir: str):
         print("Dispatching generator...\n")
         dispatch_generator(ctx)
         update_run_status(output_dir, run_id, "completed")
+        return True
 
     except Exception as e:
         if run_id:
             update_run_status(output_dir, run_id, "failed", error=format_user_error(e))
         print(f"\nError during PSE bootstrap:\n{format_user_error(e)}")
+        return False
 
 
 def validate_environment():

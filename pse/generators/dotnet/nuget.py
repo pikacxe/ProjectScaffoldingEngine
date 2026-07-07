@@ -1,5 +1,6 @@
 import os
-import subprocess
+
+from pse.generators.dotnet.process import run_dotnet
 
 
 def resolve_packages(ctx):
@@ -52,8 +53,8 @@ def restore_packages(ctx):
             target_project = default_project
 
         for pkg in pkg_list:
-            subprocess.run([
-                "dotnet", "add",
+            run_dotnet([
+                "add",
                 target_project,
                 "package", pkg
             ], cwd=ctx.output_dir)

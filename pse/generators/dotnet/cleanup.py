@@ -1,5 +1,6 @@
 import os
-import subprocess
+
+from pse.generators.dotnet.process import run_dotnet
 
 
 def clean_solution(ctx):
@@ -8,4 +9,4 @@ def clean_solution(ctx):
     if not os.path.isdir(output_dir):
         return
 
-    subprocess.run(["dotnet", "clean"], cwd=output_dir)
+    run_dotnet(["clean"], cwd=output_dir)
