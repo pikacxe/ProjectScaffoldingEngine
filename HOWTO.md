@@ -130,11 +130,54 @@ The current dotnet output is intentionally thin and generic:
 ## Quick run
 
 ```bash
-python run.py sample_with_capabilities.pse -o ./sample_output
+pse sample_with_capabilities.pse -o ./sample_output
 ```
 
 CLI usage:
 
 ```bash
-python run.py <dsl_file> -o <output_dir>
+pse <dsl_file> -o <output_dir>
 ```
+
+The same generator is registered with textX and can be discovered by the `textx` command:
+
+```bash
+textx list-generators
+textx generate pse/sample_with_capabilities.pse --target dotnet -o ./sample_output --overwrite
+```
+
+## textX-LS editor support
+
+PSE is registered as a textX language package, so editor support is provided through the upstream `textX-LS` project rather than a custom language server. `textX-LS` discovers PSE through the `textx_languages` entry point after this project is installed.
+
+PSE contributes the following textX integration points:
+
+- language: `pse (*.pse)`
+- generator: `pse -> dotnet`
+- syntax parsing: `pse/grammar/pse.tx`, loaded through `textx.metamodel_from_file`
+- semantic checks: `pse.validation.validate_model`
+
+Install PSE in the same Python environment used by `textX-LS`:
+
+```bash
+pip install -e .
+textx list-languages
+textx check pse/sample.pse
+```
+
+Expected discovery output includes:
+
+```text
+pse (*.pse)    pse    Project Scaffolding Engine DSL.
+```
+
+To use `textX-LS`, install and run the upstream textX-LS VS Code extension/client as documented in the textX-LS repository. Once the extension uses an environment where PSE is installed, `.pse` files are handled as a registered textX language.
+
+Useful validation commands before opening the editor:
+
+```bash
+textx check pse/sample.pse
+textx check pse/sample_with_capabilities.pse
+```
+
+The textX-LS stack can generate/install VS Code support for registered textX languages through its `textx-vscode` integration. PSE does not implement a separate LSP transport; it relies on textX-LS for editor features such as validation, completion, definitions, references, folding, symbols, and syntax highlighting.

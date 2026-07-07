@@ -6,6 +6,54 @@ Instead of generating folders and files directly, PSE allows developers to descr
 
 The goal is to provide a consistent, maintainable starting point for modern software projects while remaining technology-agnostic and future-proof.
 
+
+## Installation
+
+Install from the repository root:
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -e .
+```
+
+After installation, PSE is available both as a CLI command and as a registered textX language/generator:
+
+```bash
+pse --help
+textx list-languages
+textx list-generators
+```
+
+Expected textX discovery includes:
+
+```text
+pse (*.pse)       pse        Project Scaffolding Engine DSL.
+pse -> dotnet     pse        Generate a .NET solution from a PSE model.
+```
+
+## Quick Usage
+
+Validate a PSE model:
+
+```bash
+textx check pse/sample.pse
+```
+
+Generate a .NET project through the PSE CLI:
+
+```bash
+pse pse/sample_with_capabilities.pse -o ./pse/sample_output
+```
+
+Generate through the registered textX generator:
+
+```bash
+textx generate pse/sample_with_capabilities.pse --target dotnet -o ./pse/sample_output --overwrite
+```
+
+For generated .NET output, the `dotnet` CLI must be installed and available on `PATH`.
+
 ---
 
 ## Vision
@@ -156,14 +204,6 @@ PSE is an architecture compilation engine and a declarative, heuristic-driven sc
 - Infrastructure scaling (Docker now, Kubernetes next).
 - Archetype evolution (Clean Architecture, Modular Monolith, Microservices).
 
-### Next Milestone
-
-The missing brain layer is package resolution and conflict solving:
-
-- Capability-to-package mapping.
-- Version conflict resolution.
-- Dependency collision handling.
-- Transitive dependency reasoning.
 
 ### DSL
 
@@ -218,6 +258,20 @@ Samples:
 
 All emitted content is rendered from templates in [pse/templates/dotnet](pse/templates/dotnet). Edit those files to customize Program.cs, controllers, repositories, Docker artifacts, test stubs, and class skeletons.
 
+### Editor Support With textX-LS
+
+PSE is a registered textX language package for `.pse` files. Editor support is provided through the upstream [textX-LS](https://github.com/textX/textX-LS) project, not through a custom language-server implementation.
+
+After installing PSE, textX can discover the language and generator:
+
+```bash
+textx list-languages
+textx list-generators
+textx check pse/sample.pse
+```
+
+The registered PSE language uses `pse/grammar/pse.tx` through textX and runs PSE semantic validation as a textX model processor. Install PSE into the same Python environment used by textX-LS so the server can discover `pse (*.pse)`.
+
 ### Generated Output Notes
 
 - `pse.manifest.json` is append-only and records `status`, `error`, and `finished_at` for each run.
@@ -227,10 +281,16 @@ All emitted content is rendered from templates in [pse/templates/dotnet](pse/tem
 
 ### Running
 
-Run the generator from [pse/run.py](pse/run.py). It accepts a DSL file and output directory:
+Run the generator through the installed CLI:
 
 ```bash
-python run.py sample_with_capabilities.pse -o ./sample_output
+pse sample_with_capabilities.pse -o ./sample_output
+```
+
+Or through the registered textX generator:
+
+```bash
+textx generate pse/sample_with_capabilities.pse --target dotnet -o ./sample_output --overwrite
 ```
 
 ---
@@ -422,7 +482,6 @@ configmaps/
 
 ### Future Targets
 
-* Docker Compose
 * Kubernetes
 * Docker Swarm
 * Nomad
@@ -504,30 +563,6 @@ webapi:
 
 ---
 
-## Plugin System
-
-PSE is built around generator plugins.
-
-```text
-plugins/
-
-├── dotnet
-├── java
-├── docker
-├── kubernetes
-├── github_actions
-├── terraform
-```
-
-A plugin may provide:
-
-* Grammar extensions
-* Validators
-* Templates
-* Generators
-
----
-
 ## Repository Structure
 
 ```text
@@ -558,34 +593,6 @@ pse/
 │
 └── tests/
 ```
-
----
-
-## Roadmap
-
-### Phase 1
-
-* DSL foundation
-* Architecture model
-* .NET generator
-* Docker generator
-* Git integration
-
-### Phase 2
-
-* Domain modeling
-* API generation
-* Validation engine
-* GitHub Actions
-
-### Phase 3
-
-* Kubernetes support
-* DockerSwarm support
-* Java generator
-* Multi-service architectures
-
----
 
 ## License
 
