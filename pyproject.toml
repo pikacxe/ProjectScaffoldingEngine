@@ -15,8 +15,16 @@ dependencies = [
     "pyyaml"
 ]
 
+[project.optional-dependencies]
+editor = [
+    "textx-gen-vscode>=0.3.0",
+    "textx-gen-coloring>=0.2.0",
+    "textX-LS-server>=0.3.0",
+]
+
 [project.scripts]
 pse = "pse.run:main"
+pse-vscode-extension = "pse.vscode:main"
 
 [project.entry-points.textx_languages]
 pse = "pse.language:pse_language"
