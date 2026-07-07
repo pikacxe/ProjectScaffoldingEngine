@@ -54,6 +54,12 @@ textx generate pse/sample_with_capabilities.pse --target dotnet -o ./pse/sample_
 
 For generated .NET output, the `dotnet` CLI must be installed and available on `PATH`.
 
+For VS Code/textX-LS editor support, install the editor extras:
+
+```bash
+pip install -e ".[editor]"
+```
+
 ---
 
 ## Vision
@@ -271,6 +277,16 @@ textx check pse/sample.pse
 ```
 
 The registered PSE language uses `pse/grammar/pse.tx` through textX and runs PSE semantic validation as a textX model processor. Install PSE into the same Python environment used by textX-LS so the server can discover `pse (*.pse)`.
+
+To generate a VS Code extension for `.pse` files:
+
+```bash
+pip install -e ".[editor]"
+pse-vscode-extension --output dist/pse-0.1.0.vsix
+code --install-extension dist/pse-0.1.0.vsix
+```
+
+The generated extension contributes `.pse` file recognition and TextMate syntax highlighting, and depends on the upstream `textX.textX` VS Code extension for textX-LS language features such as diagnostics, completion, definitions, references, folding, and symbols. Make sure VS Code/textX-LS uses the Python environment where PSE is installed.
 
 ### Generated Output Notes
 

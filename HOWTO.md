@@ -160,7 +160,7 @@ PSE contributes the following textX integration points:
 Install PSE in the same Python environment used by `textX-LS`:
 
 ```bash
-pip install -e .
+pip install -e ".[editor]"
 textx list-languages
 textx check pse/sample.pse
 ```
@@ -180,4 +180,11 @@ textx check pse/sample.pse
 textx check pse/sample_with_capabilities.pse
 ```
 
-The textX-LS stack can generate/install VS Code support for registered textX languages through its `textx-vscode` integration. PSE does not implement a separate LSP transport; it relies on textX-LS for editor features such as validation, completion, definitions, references, folding, symbols, and syntax highlighting.
+Generate and install the VS Code extension for `.pse` files:
+
+```bash
+pse-vscode-extension --output dist/pse-0.1.0.vsix
+code --install-extension dist/pse-0.1.0.vsix
+```
+
+The generated extension contributes `.pse` file recognition and TextMate syntax highlighting. It depends on the upstream `textX.textX` VS Code extension, which runs textX-LS and provides validation, completion, definitions, references, folding, symbols, and generator integration. PSE does not implement a separate LSP transport.
