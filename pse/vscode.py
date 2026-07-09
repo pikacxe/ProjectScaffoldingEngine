@@ -131,6 +131,58 @@ function provideCompletionItems(document, position) {{
   ];
 }}
 
+function formatPseText(text) {{
+  const newline = text.includes('\\r\\n') ? '\\r\\n' : '\\n';
+  const normalized = text.replace(/\\r\\n/g, '\\n').replace(/\\r/g, '\\n');
+  const hadFinalNewline = normalized.endsWith('\\n');
+  const lines = normalized.split('\\n');
+  if (hadFinalNewline) {{
+    lines.pop();
+  }}
+
+  const formatted = [];
+  let indent = 0;
+  let previousWasBlank = false;
+
+  for (const rawLine of lines) {{
+    const trimmed = rawLine.trim();
+
+    if (trimmed.length === 0) {{
+      if (!previousWasBlank) {{
+        formatted.push('');
+      }}
+      previousWasBlank = true;
+      continue;
+    }}
+
+    previousWasBlank = false;
+    const startsWithClose = trimmed.startsWith('}}');
+    if (startsWithClose) {{
+      indent = Math.max(indent - 1, 0);
+    }}
+
+    formatted.push(`${{' '.repeat(indent * 4)}}${{trimmed}}`);
+
+    const openCount = (trimmed.match(/\\{{/g) || []).length;
+    const closeCount = (trimmed.match(/\\}}/g) || []).length;
+    indent = Math.max(indent + openCount - closeCount + (startsWithClose ? 1 : 0), 0);
+  }}
+
+  return formatted.join(newline) + (hadFinalNewline ? newline : '');
+}}
+
+function provideDocumentFormattingEdits(document) {{
+  const text = document.getText();
+  const formatted = formatPseText(text);
+
+  if (formatted === text) {{
+    return [];
+  }}
+
+  const fullRange = new vscode.Range(document.positionAt(0), document.positionAt(text.length));
+  return [vscode.TextEdit.replace(fullRange, formatted)];
+}}
+
 /**
  * @param {{vscode.ExtensionContext}} context
  */
@@ -147,6 +199,13 @@ function activate(context) {{
       ' ',
       '=',
       '\\t'
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerDocumentFormattingEditProvider(
+      'pse',
+      {{ provideDocumentFormattingEdits }}
     )
   );
 }}
@@ -166,10 +225,12 @@ def normalize_vsix_package(output_path: str):
 
     package = json.loads(entries["extension/package.json"].decode("utf-8"))
     for language in package.get("contributes", {}).get("languages", []):
+        language.setdefault("aliases", ["PSE", "pse"])
         language["extensions"] = [
             extension if extension.startswith(".") else f".{extension}"
             for extension in language.get("extensions", [])
         ]
+        language.setdefault("filenamePatterns", ["*.pse"])
 
     entries["extension/package.json"] = (
         json.dumps(package, indent=2, ensure_ascii=True) + "\n"

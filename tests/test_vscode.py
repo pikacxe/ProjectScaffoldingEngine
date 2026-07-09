@@ -46,6 +46,8 @@ class VscodeExtensionTests(unittest.TestCase):
             language = package_json["contributes"]["languages"][0]
             self.assertEqual(language["id"], "pse")
             self.assertIn(".pse", language["extensions"])
+            self.assertIn("*.pse", language["filenamePatterns"])
+            self.assertIn("PSE", language["aliases"])
             self.assertIn("textX.textX", package_json["extensionDependencies"])
             self.assertIn("Project", syntax_json)
             self.assertIn("Context", syntax_json)
@@ -57,6 +59,8 @@ class VscodeExtensionTests(unittest.TestCase):
             self.assertIn("PRIMITIVE_TYPES", extension_js)
             self.assertIn("Guid", extension_js)
             self.assertIn("Project", extension_js)
+            self.assertIn("registerDocumentFormattingEditProvider", extension_js)
+            self.assertIn("formatPseText", extension_js)
 
 
 if __name__ == "__main__":
