@@ -15,7 +15,7 @@ Capabilities:
     '}';
 
 CapabilityDecl:
-    'Capability' name=ID;
+    'Capability' name=ID ('=' implementation=ID)?;
 
 Target:
     'dotnet' | 'java';
