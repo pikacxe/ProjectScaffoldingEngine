@@ -1,0 +1,8 @@
+{
+  "files.associations": {
+    "*.pse": "pse"
+  },
+  "[pse]": {
+    "editor.defaultFormatter": "textx.pse"
+  }
+}
