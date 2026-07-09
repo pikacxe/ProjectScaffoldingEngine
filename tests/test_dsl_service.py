@@ -55,6 +55,27 @@ class DslServiceTests(unittest.TestCase):
         self.assertTrue(document.is_valid)
         self.assertEqual(document.diagnostics, ())
 
+    def test_property_types_accept_primitives_and_domain_types(self):
+        source = """Project StoreApi target=dotnet {
+    Archetype WebApi
+    Context Identity {
+        Entity User {
+            Guid Id
+            Email Email
+        }
+        ValueObject Email {
+            String Value
+        }
+    }
+}"""
+
+        document = parse_document(source, "types.pse")
+
+        self.assertTrue(document.is_valid)
+        user = document.model.contexts[0].entities[0]
+        self.assertEqual(user.properties[0].type, "Guid")
+        self.assertEqual(user.properties[1].type, "Email")
+
     def test_textx_language_registration_descriptor(self):
         self.assertIsInstance(pse_language, LanguageDesc)
         self.assertEqual(pse_language.name, "pse")

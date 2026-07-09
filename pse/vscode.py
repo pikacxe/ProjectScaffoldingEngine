@@ -1,10 +1,59 @@
 import argparse
+import json
 import os
 import shutil
 import subprocess
 import sys
+import tempfile
+import zipfile
 
 from pse.language import pse_language
+
+
+KEYWORD_COMPLETIONS = [
+    "Project",
+    "target",
+    "Archetype",
+    "Capabilities",
+    "Capability",
+    "Context",
+    "Entity",
+    "ValueObject",
+    "Aggregate",
+    "root",
+    "children",
+    "Infrastructure",
+    "Database",
+    "Cache",
+    "MessageBroker",
+    "Deployment",
+]
+
+PRIMITIVE_TYPE_COMPLETIONS = [
+    "Guid",
+    "DateTime",
+    "String",
+    "Int",
+    "Long",
+    "Bool",
+    "Boolean",
+    "Decimal",
+    "Double",
+    "Float",
+]
+
+VALUE_COMPLETIONS = [
+    "dotnet",
+    "java",
+    "WebApi",
+    "CleanArchitecture",
+    "ModularMonolith",
+    "Microservices",
+    "PostgreSQL",
+    "Redis",
+    "RabbitMQ",
+    "Docker",
+]
 
 
 def default_output_path():
@@ -43,6 +92,103 @@ def build_command(output_path: str, overwrite: bool = True):
     return command
 
 
+def completion_extension_js():
+    keywords = json.dumps(KEYWORD_COMPLETIONS, indent=2)
+    primitive_types = json.dumps(PRIMITIVE_TYPE_COMPLETIONS, indent=2)
+    values = json.dumps(VALUE_COMPLETIONS, indent=2)
+
+    return f"""const vscode = require('vscode');
+
+const KEYWORDS = {keywords};
+const PRIMITIVE_TYPES = {primitive_types};
+const VALUES = {values};
+
+function item(label, kind, detail) {{
+  const completion = new vscode.CompletionItem(label, kind);
+  completion.detail = detail;
+  return completion;
+}}
+
+function items(labels, kind, detail) {{
+  return labels.map((label) => item(label, kind, detail));
+}}
+
+function provideCompletionItems(document, position) {{
+  const linePrefix = document.lineAt(position).text.slice(0, position.character);
+
+  if (/\\btarget\\s*=\\s*$/.test(linePrefix)) {{
+    return items(['dotnet', 'java'], vscode.CompletionItemKind.Value, 'PSE target');
+  }}
+
+  if (/^\\s*(Archetype|Database|Cache|MessageBroker|Deployment|Capability)\\s+$/.test(linePrefix)) {{
+    return items(VALUES, vscode.CompletionItemKind.Value, 'PSE value');
+  }}
+
+  return [
+    ...items(KEYWORDS, vscode.CompletionItemKind.Keyword, 'PSE keyword'),
+    ...items(PRIMITIVE_TYPES, vscode.CompletionItemKind.TypeParameter, 'PSE primitive type'),
+    ...items(VALUES, vscode.CompletionItemKind.Value, 'PSE value'),
+  ];
+}}
+
+/**
+ * @param {{vscode.ExtensionContext}} context
+ */
+function activate(context) {{
+  const textxExtension = vscode.extensions.getExtension('textX.textX');
+  if (textxExtension && !textxExtension.isActive) {{
+    textxExtension.activate();
+  }}
+
+  context.subscriptions.push(
+    vscode.languages.registerCompletionItemProvider(
+      'pse',
+      {{ provideCompletionItems }},
+      ' ',
+      '=',
+      '\\t'
+    )
+  );
+}}
+
+function deactivate() {{}}
+
+module.exports = {{
+  activate,
+  deactivate,
+}};
+"""
+
+
+def normalize_vsix_package(output_path: str):
+    with zipfile.ZipFile(output_path) as archive:
+        entries = {name: archive.read(name) for name in archive.namelist()}
+
+    package = json.loads(entries["extension/package.json"].decode("utf-8"))
+    for language in package.get("contributes", {}).get("languages", []):
+        language["extensions"] = [
+            extension if extension.startswith(".") else f".{extension}"
+            for extension in language.get("extensions", [])
+        ]
+
+    entries["extension/package.json"] = (
+        json.dumps(package, indent=2, ensure_ascii=True) + "\n"
+    ).encode("utf-8")
+    entries["extension/extension.js"] = completion_extension_js().encode("utf-8")
+
+    output_dir = os.path.dirname(os.path.abspath(output_path))
+    fd, temp_path = tempfile.mkstemp(suffix=".vsix", dir=output_dir)
+    os.close(fd)
+    try:
+        with zipfile.ZipFile(temp_path, "w", zipfile.ZIP_DEFLATED) as archive:
+            for name, content in entries.items():
+                archive.writestr(name, content)
+        os.replace(temp_path, output_path)
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+
 def generate_vscode_extension(output_path: str, overwrite: bool = True):
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
     command = build_command(output_path, overwrite=overwrite)
@@ -54,6 +200,7 @@ def generate_vscode_extension(output_path: str, overwrite: bool = True):
     )
 
     if result.returncode == 0:
+        normalize_vsix_package(output_path)
         print(f"Generated VS Code extension: {output_path}")
         return 0
 
