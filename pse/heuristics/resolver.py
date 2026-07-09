@@ -29,9 +29,14 @@ def resolve_capabilities(ctx):
     explicit = getattr(ctx.architecture, "capabilities", []) or []
     registry = load_capability_registry()
 
-    for cap_name in explicit:
-        name = cap_name.lower()
-        implementation = pick_default_implementation(name, caps, registry)
+    for selected in explicit:
+        name = getattr(selected, "name", selected).lower()
+        requested = getattr(selected, "implementation", None)
+        implementation = (
+            normalize_implementation(name, requested)
+            if requested
+            else pick_default_implementation(name, caps, registry)
+        )
 
         graph.capabilities[name] = Capability(
             name=name,
@@ -91,6 +96,10 @@ def pick_default_implementation(name, preset_caps, registry):
         return preset_caps[name]
 
     implementations = registry.get(name, {})
+    for implementation, metadata in implementations.items():
+        if isinstance(metadata, dict) and metadata.get("default"):
+            return implementation
+
     if len(implementations) == 1:
         return next(iter(implementations.keys()))
 
@@ -105,5 +114,8 @@ def normalize_implementation(capability: str, value: str):
 
     if capability == "database" and normalized == "postgresql":
         return "postgres"
+
+    if capability == "cqrs" and normalized == "wolverinefx":
+        return "wolverine"
 
     return normalized

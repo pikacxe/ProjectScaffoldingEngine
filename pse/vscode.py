@@ -53,6 +53,13 @@ VALUE_COMPLETIONS = [
     "Redis",
     "RabbitMQ",
     "Docker",
+    "Logging",
+    "Validation",
+    "Mapping",
+    "CQRS",
+    "Testing",
+    "MediatR",
+    "Wolverine",
 ]
 
 
@@ -122,6 +129,10 @@ function provideCompletionItems(document, position) {{
 
   if (/^\\s*(Archetype|Database|Cache|MessageBroker|Deployment|Capability)\\s+$/.test(linePrefix)) {{
     return items(VALUES, vscode.CompletionItemKind.Value, 'PSE value');
+  }}
+
+  if (/^\\s*Capability\\s+\\w+\\s*=\\s*$/.test(linePrefix)) {{
+    return items(['MediatR', 'Wolverine'], vscode.CompletionItemKind.Value, 'PSE capability implementation');
   }}
 
   return [

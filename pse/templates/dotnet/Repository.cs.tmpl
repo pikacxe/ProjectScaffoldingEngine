@@ -1,5 +1,5 @@
-using System;
 using System.Collections.Generic;
+using System.Linq;
 using {{DomainNamespace}}.Entities;
 using {{DomainNamespace}}.Repositories;
 
@@ -7,28 +7,50 @@ namespace {{Namespace}};
 
 public class {{ClassName}} : {{InterfaceName}}
 {
-	public IEnumerable<{{EntityName}}> GetAll()
-	{
-		return Array.Empty<{{EntityName}}>();
-	}
+    private readonly List<{{EntityName}}> _items = new();
 
-	public {{EntityName}}? GetById(Guid id)
-	{
-		return null;
-	}
+    public IEnumerable<{{EntityName}}> GetAll()
+    {
+        return _items;
+    }
 
-	public void Create({{EntityName}} entity)
-	{
-		throw new NotImplementedException();
-	}
+    public {{EntityName}}? GetById({{IdType}} id)
+    {
+        return _items.FirstOrDefault(entity =>
+            EqualityComparer<{{IdType}}>.Default.Equals(entity.{{IdPropertyName}}, id));
+    }
 
-	public void Update({{EntityName}} entity)
-	{
-		throw new NotImplementedException();
-	}
+    public void Create({{EntityName}} entity)
+    {
+        if (GetById(entity.{{IdPropertyName}}) is not null)
+        {
+            Update(entity);
+            return;
+        }
 
-	public void Delete(Guid id)
-	{
-		throw new NotImplementedException();
-	}
+        _items.Add(entity);
+    }
+
+    public void Update({{EntityName}} entity)
+    {
+        var index = _items.FindIndex(existing =>
+            EqualityComparer<{{IdType}}>.Default.Equals(existing.{{IdPropertyName}}, entity.{{IdPropertyName}}));
+
+        if (index >= 0)
+        {
+            _items[index] = entity;
+            return;
+        }
+
+        _items.Add(entity);
+    }
+
+    public void Delete({{IdType}} id)
+    {
+        var entity = GetById(id);
+        if (entity is not null)
+        {
+            _items.Remove(entity);
+        }
+    }
 }

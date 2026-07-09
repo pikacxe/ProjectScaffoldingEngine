@@ -55,6 +55,33 @@ class DslServiceTests(unittest.TestCase):
         self.assertTrue(document.is_valid)
         self.assertEqual(document.diagnostics, ())
 
+    def test_capability_implementation_selection_is_valid(self):
+        source = """Project StoreApi target=dotnet {
+    Archetype WebApi
+    Capabilities {
+        Capability CQRS = MediatR
+    }
+}"""
+
+        document = parse_document(source, "cqrs.pse")
+
+        self.assertTrue(document.is_valid)
+        self.assertEqual(document.diagnostics, ())
+
+    def test_unknown_capability_implementation_returns_diagnostic(self):
+        source = """Project StoreApi target=dotnet {
+    Archetype WebApi
+    Capabilities {
+        Capability CQRS = Unknown
+    }
+}"""
+
+        diagnostics = validate_document(source, "cqrs.pse")
+
+        self.assertEqual(len(diagnostics), 1)
+        self.assertIn("Capability 'CQRS' implementation 'Unknown' is not recognized", diagnostics[0].message)
+        self.assertEqual(diagnostics[0].range.start.line, 3)
+
     def test_property_types_accept_primitives_and_domain_types(self):
         source = """Project StoreApi target=dotnet {
     Archetype WebApi

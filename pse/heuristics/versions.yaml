@@ -1,4 +1,4 @@
-dotnet: "9.0"
+dotnet: "10.0"
 
 postgres: "17"
 
@@ -6,6 +6,28 @@ redis: "8"
 
 rabbitmq: "4"
 
-serilog: "9.0"
+serilog: "10.0.0"
 
-fluentvalidation: "12.1"
+serilog_console: "6.1.1"
+
+fluentvalidation: "11.3.1"
+
+mapster: "10.0.10"
+
+mediatr: "14.2.0"
+
+wolverine: "6.17.0"
+
+xunit: "2.9.3"
+
+xunit_runner: "3.1.5"
+
+test_sdk: "18.7.0"
+
+efcore: "10.0.9"
+
+npgsql_efcore: "10.0.2"
+
+stackexchange_redis: "3.0.11"
+
+mass_transit: "9.0.0"

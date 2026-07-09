@@ -1,0 +1,43 @@
+using System.Collections.Generic;
+using {{DomainNamespace}}.Entities;
+using {{InterfaceNamespace}};
+
+namespace {{Namespace}};
+
+public sealed record GetAll{{EntityName}}Query();
+
+public sealed record Get{{EntityName}}ByIdQuery({{IdType}} Id);
+
+public sealed record Create{{EntityName}}Command({{EntityName}} Entity);
+
+public sealed record Update{{EntityName}}Command({{IdType}} Id, {{EntityName}} Entity);
+
+public sealed record Delete{{EntityName}}Command({{IdType}} Id);
+
+public static class {{EntityName}}MessageHandlers
+{
+    public static IEnumerable<{{EntityName}}> Handle(GetAll{{EntityName}}Query query, I{{EntityName}}Service service)
+    {
+        return service.GetAll();
+    }
+
+    public static {{EntityName}}? Handle(Get{{EntityName}}ByIdQuery query, I{{EntityName}}Service service)
+    {
+        return service.GetById(query.Id);
+    }
+
+    public static {{EntityName}} Handle(Create{{EntityName}}Command command, I{{EntityName}}Service service)
+    {
+        return service.Create(command.Entity);
+    }
+
+    public static bool Handle(Update{{EntityName}}Command command, I{{EntityName}}Service service)
+    {
+        return service.Update(command.Id, command.Entity);
+    }
+
+    public static bool Handle(Delete{{EntityName}}Command command, I{{EntityName}}Service service)
+    {
+        return service.Delete(command.Id);
+    }
+}

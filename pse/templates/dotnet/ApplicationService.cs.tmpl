@@ -1,0 +1,55 @@
+using System.Collections.Generic;
+using {{DomainNamespace}}.Entities;
+using {{DomainNamespace}}.Repositories;
+using {{InterfaceNamespace}};
+
+namespace {{Namespace}};
+
+public class {{ClassName}} : {{InterfaceName}}
+{
+    private readonly I{{EntityName}}Repository _repository;
+
+    public {{ClassName}}(I{{EntityName}}Repository repository)
+    {
+        _repository = repository;
+    }
+
+    public IEnumerable<{{EntityName}}> GetAll()
+    {
+        return _repository.GetAll();
+    }
+
+    public {{EntityName}}? GetById({{IdType}} id)
+    {
+        return _repository.GetById(id);
+    }
+
+    public {{EntityName}} Create({{EntityName}} entity)
+    {
+        _repository.Create(entity);
+        return entity;
+    }
+
+    public bool Update({{IdType}} id, {{EntityName}} entity)
+    {
+        if (_repository.GetById(id) is null)
+        {
+            return false;
+        }
+
+        entity.{{IdPropertyName}} = id;
+        _repository.Update(entity);
+        return true;
+    }
+
+    public bool Delete({{IdType}} id)
+    {
+        if (_repository.GetById(id) is null)
+        {
+            return false;
+        }
+
+        _repository.Delete(id);
+        return true;
+    }
+}
