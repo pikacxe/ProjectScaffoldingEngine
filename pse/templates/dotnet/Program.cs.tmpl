@@ -1,8 +1,9 @@
 {{UsingLines}}var builder = WebApplication.CreateBuilder(args);
 
+{{HostConfiguration}}
 builder.Services.AddControllers();
 
-{{InfraRegistrations}}var app = builder.Build();
+{{ServiceRegistrations}}{{InfraRegistrations}}var app = builder.Build();
 
 {{InfraPipeline}}app.MapControllers();
 

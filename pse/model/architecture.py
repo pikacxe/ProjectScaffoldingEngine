@@ -65,9 +65,15 @@ class Deployment:
 
 
 @dataclass
+class CapabilitySelection:
+    name: str
+    implementation: Optional[str] = None
+
+
+@dataclass
 class ArchitectureModel:
     project: Project
     contexts: List[Context]
     infrastructure: Infrastructure
     deployment: Deployment
-    capabilities: List[str] = field(default_factory=list)
+    capabilities: List[CapabilitySelection] = field(default_factory=list)

@@ -1,0 +1,93 @@
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using MediatR;
+using {{DomainNamespace}}.Entities;
+using {{InterfaceNamespace}};
+
+namespace {{Namespace}};
+
+public sealed record GetAll{{EntityName}}Query() : IRequest<IEnumerable<{{EntityName}}>>;
+
+public sealed record Get{{EntityName}}ByIdQuery({{IdType}} Id) : IRequest<{{EntityName}}?>;
+
+public sealed record Create{{EntityName}}Command({{EntityName}} Entity) : IRequest<{{EntityName}}>;
+
+public sealed record Update{{EntityName}}Command({{IdType}} Id, {{EntityName}} Entity) : IRequest<bool>;
+
+public sealed record Delete{{EntityName}}Command({{IdType}} Id) : IRequest<bool>;
+
+public sealed class GetAll{{EntityName}}QueryHandler : IRequestHandler<GetAll{{EntityName}}Query, IEnumerable<{{EntityName}}>>
+{
+    private readonly I{{EntityName}}Service _service;
+
+    public GetAll{{EntityName}}QueryHandler(I{{EntityName}}Service service)
+    {
+        _service = service;
+    }
+
+    public Task<IEnumerable<{{EntityName}}>> Handle(GetAll{{EntityName}}Query request, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(_service.GetAll());
+    }
+}
+
+public sealed class Get{{EntityName}}ByIdQueryHandler : IRequestHandler<Get{{EntityName}}ByIdQuery, {{EntityName}}?>
+{
+    private readonly I{{EntityName}}Service _service;
+
+    public Get{{EntityName}}ByIdQueryHandler(I{{EntityName}}Service service)
+    {
+        _service = service;
+    }
+
+    public Task<{{EntityName}}?> Handle(Get{{EntityName}}ByIdQuery request, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(_service.GetById(request.Id));
+    }
+}
+
+public sealed class Create{{EntityName}}CommandHandler : IRequestHandler<Create{{EntityName}}Command, {{EntityName}}>
+{
+    private readonly I{{EntityName}}Service _service;
+
+    public Create{{EntityName}}CommandHandler(I{{EntityName}}Service service)
+    {
+        _service = service;
+    }
+
+    public Task<{{EntityName}}> Handle(Create{{EntityName}}Command request, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(_service.Create(request.Entity));
+    }
+}
+
+public sealed class Update{{EntityName}}CommandHandler : IRequestHandler<Update{{EntityName}}Command, bool>
+{
+    private readonly I{{EntityName}}Service _service;
+
+    public Update{{EntityName}}CommandHandler(I{{EntityName}}Service service)
+    {
+        _service = service;
+    }
+
+    public Task<bool> Handle(Update{{EntityName}}Command request, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(_service.Update(request.Id, request.Entity));
+    }
+}
+
+public sealed class Delete{{EntityName}}CommandHandler : IRequestHandler<Delete{{EntityName}}Command, bool>
+{
+    private readonly I{{EntityName}}Service _service;
+
+    public Delete{{EntityName}}CommandHandler(I{{EntityName}}Service service)
+    {
+        _service = service;
+    }
+
+    public Task<bool> Handle(Delete{{EntityName}}Command request, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(_service.Delete(request.Id));
+    }
+}

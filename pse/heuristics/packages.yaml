@@ -1,33 +1,58 @@
 serilog:
   packages:
-    - Serilog.AspNetCore
-    - Serilog.Sinks.Console
+    - name: Serilog.AspNetCore
+      version: serilog
+    - name: Serilog.Sinks.Console
+      version: serilog_console
 
 fluentvalidation:
   packages:
-    - FluentValidation.AspNetCore
+    - name: FluentValidation.AspNetCore
+      version: fluentvalidation
 
 mapster:
   packages:
-    - Mapster
-    - Mapster.DependencyInjection
+    - name: Mapster
+      version: mapster
+    - name: Mapster.DependencyInjection
+      version: mapster
+
+mediatr:
+  packages:
+    - name: MediatR
+      version: mediatr
+
+wolverine:
+  packages:
+    - name: WolverineFx
+      version: wolverine
 
 xunit:
   packages:
-    - xunit
-    - xunit.runner.visualstudio
+    - name: Microsoft.NET.Test.Sdk
+      version: test_sdk
+    - name: xunit
+      version: xunit
+    - name: xunit.runner.visualstudio
+      version: xunit_runner
 
 postgres:
   packages:
-    - Microsoft.EntityFrameworkCore
-    - Npgsql.EntityFrameworkCore.PostgreSQL
+    - name: Microsoft.EntityFrameworkCore
+      version: efcore
+    - name: Npgsql.EntityFrameworkCore.PostgreSQL
+      version: npgsql_efcore
 
 redis:
   packages:
-    - StackExchange.Redis
-    - Microsoft.Extensions.Caching.StackExchangeRedis
+    - name: StackExchange.Redis
+      version: stackexchange_redis
+    - name: Microsoft.Extensions.Caching.StackExchangeRedis
+      version: efcore
 
 rabbitmq:
   packages:
-    - MassTransit
-    - MassTransit.RabbitMQ
+    - name: MassTransit
+      version: mass_transit
+    - name: MassTransit.RabbitMQ
+      version: mass_transit

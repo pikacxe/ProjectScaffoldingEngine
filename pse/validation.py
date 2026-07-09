@@ -132,6 +132,25 @@ def validate_capabilities(model, source_text: str = None):
                     source_text,
                 )
             )
+            continue
+
+        implementation = getattr(capability, "implementation", None)
+        if not implementation:
+            continue
+
+        normalized_implementation = normalize_capability_implementation(name, implementation)
+        implementations = {
+            normalize_capability_implementation(name, implementation_name)
+            for implementation_name in registry.get(name, {}).keys()
+        }
+        if normalized_implementation not in implementations:
+            errors.append(
+                problem_from_node(
+                    f"Capability '{capability.name}' implementation '{implementation}' is not recognized. Available implementations: {', '.join(sorted(registry.get(name, {}).keys()))}.",
+                    capability,
+                    source_text,
+                )
+            )
 
     return errors
 
@@ -322,6 +341,18 @@ def load_capability_registry():
 
 def normalize_name(value):
     return (value or "").replace("_", "").replace("-", "").lower()
+
+
+def normalize_capability_implementation(capability: str, value: str):
+    normalized = normalize_name(value)
+
+    if capability == "database" and normalized == "postgresql":
+        return "postgres"
+
+    if capability == "cqrs" and normalized == "wolverinefx":
+        return "wolverine"
+
+    return normalized
 
 
 def format_validation_error(errors):

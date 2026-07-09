@@ -4,7 +4,6 @@ webapi:
     validation: fluentvalidation
     mapping: mapster
     testing: xunit
-    database: postgres
 
 cleanarchitecture:
   capabilities:

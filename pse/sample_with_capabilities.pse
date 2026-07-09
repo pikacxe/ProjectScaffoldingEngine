@@ -6,6 +6,7 @@ Project StoreApi target=dotnet {
         Capability Logging
         Capability Validation
         Capability Mapping
+        Capability CQRS = MediatR
         Capability Testing
     }
 

@@ -1,0 +1,17 @@
+using System.Collections.Generic;
+using {{DomainNamespace}}.Entities;
+
+namespace {{Namespace}};
+
+public interface {{InterfaceName}}
+{
+    IEnumerable<{{EntityName}}> GetAll();
+
+    {{EntityName}}? GetById({{IdType}} id);
+
+    {{EntityName}} Create({{EntityName}} entity);
+
+    bool Update({{IdType}} id, {{EntityName}} entity);
+
+    bool Delete({{IdType}} id);
+}
