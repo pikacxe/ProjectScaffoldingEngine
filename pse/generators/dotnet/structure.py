@@ -44,12 +44,12 @@ def create_structure(ctx):
     tests_root = os.path.join(output_dir, f"{base}.Tests")
 
     if os.path.isdir(api_root):
-        create_api_structure(api_root, contexts)
+        create_api_structure(api_root, contexts, ctx)
 
     if os.path.isdir(presentation_root):
-        create_presentation_structure(presentation_root, contexts)
+        create_presentation_structure(presentation_root, contexts, ctx)
 
-    create_application_structure(app_root, contexts)
+    create_application_structure(app_root, contexts, ctx)
     create_domain_structure(domain_root, contexts)
     create_infrastructure_structure(infra_root, contexts)
 

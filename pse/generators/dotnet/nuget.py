@@ -15,9 +15,9 @@ def resolve_packages(ctx):
 
 def capability_project_map():
     return {
-        "logging": "Application",
-        "validation": "Application",
-        "mapping": "Application",
+        "logging": "API",
+        "validation": "API",
+        "mapping": "API",
         "cqrs": "Application",
         "database": "Infrastructure",
         "cache": "Infrastructure",
@@ -33,6 +33,15 @@ def project_path(ctx, layer: str):
     return os.path.join(output_dir, project_name, f"{project_name}.csproj")
 
 
+def first_existing_project(ctx, layers):
+    for layer in layers:
+        path = project_path(ctx, layer)
+        if os.path.exists(path):
+            return path
+
+    return None
+
+
 def restore_packages(ctx):
 
     packages = resolve_packages(ctx)
@@ -46,15 +55,71 @@ def restore_packages(ctx):
 
         pkg_list = ctx.packages.get(implementation, {}).get("packages", [])
 
-        target_layer = project_map.get(capability, "Application")
-        target_project = project_path(ctx, target_layer)
+        target_projects = package_target_projects(ctx, capability, project_map)
+        if not target_projects:
+            target_projects = [default_project]
 
-        if not os.path.exists(target_project):
-            target_project = default_project
+        for package in pkg_list:
+            package_name, package_version = resolve_package(package, ctx.versions)
+            for target_project in target_projects:
+                command = [
+                    "add",
+                    target_project,
+                    "package",
+                    package_name,
+                ]
+                if package_version:
+                    command.extend(["--version", package_version])
 
-        for pkg in pkg_list:
-            run_dotnet([
-                "add",
-                target_project,
-                "package", pkg
-            ], cwd=ctx.output_dir)
+                run_dotnet(command, cwd=ctx.output_dir)
+
+
+def package_target_projects(ctx, capability: str, project_map):
+    if capability in {"logging", "validation", "mapping"}:
+        project = first_existing_project(ctx, ["API", "Presentation", "Gateway"])
+        return [project] if project else []
+
+    if capability == "cqrs":
+        projects = [
+            project_path(ctx, "Application"),
+            first_existing_project(ctx, ["API", "Presentation", "Gateway"]),
+        ]
+        return unique_existing_projects(projects)
+
+    target_layer = project_map.get(capability, "Application")
+    project = project_path(ctx, target_layer)
+    return [project] if os.path.exists(project) else []
+
+
+def unique_existing_projects(projects):
+    result = []
+    seen = set()
+    for project in projects:
+        if not project or not os.path.exists(project):
+            continue
+        normalized = os.path.abspath(project)
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        result.append(project)
+
+    return result
+
+
+def resolve_package(package, versions):
+    if isinstance(package, str):
+        return package, None
+
+    if not isinstance(package, dict):
+        raise ValueError(f"Unsupported package entry: {package!r}")
+
+    name = package.get("name")
+    version_key = package.get("version")
+
+    if not name:
+        raise ValueError(f"Package entry is missing a name: {package!r}")
+
+    if not version_key:
+        return name, None
+
+    return name, versions.get(version_key, version_key)

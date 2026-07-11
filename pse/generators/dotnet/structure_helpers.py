@@ -64,7 +64,7 @@ def find_project_root_name(path: str):
 
 def build_properties(properties):
     if not properties:
-        return "    // TODO: add properties.\n", False
+        return "    // No properties defined.\n", False
 
     lines = []
     needs_system = False

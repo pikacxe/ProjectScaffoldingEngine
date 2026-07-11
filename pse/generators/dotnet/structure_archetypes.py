@@ -2,11 +2,11 @@ import os
 
 from .structure_helpers import context_by_name, ensure_dir, ensure_placeholder
 from .structure_sections import (
+    create_application_service_files,
     create_context_api_files,
     create_domain_files,
     create_infrastructure_structure,
     create_repository_implementations,
-    create_use_case_files,
 )
 
 
@@ -33,12 +33,13 @@ def create_modular_monolith_structure(modules_root: str, contexts):
         ensure_dir(modules_root, f"{module_root}/API/Dtos")
         create_context_api_files(modules_root, [selected_context], root_prefix=f"{module_root}/API")
 
-        ensure_dir(modules_root, f"{module_root}/Application/UseCases")
+        ensure_dir(modules_root, f"{module_root}/Application/Interfaces")
+        ensure_dir(modules_root, f"{module_root}/Application/Services")
         ensure_dir(modules_root, f"{module_root}/Domain/Entities")
         ensure_dir(modules_root, f"{module_root}/Domain/Repositories")
         ensure_dir(modules_root, f"{module_root}/Infrastructure/Persistence")
 
-        create_use_case_files(modules_root, [selected_context], root_prefix=f"{module_root}/Application")
+        create_application_service_files(modules_root, [selected_context], root_prefix=f"{module_root}/Application")
         create_domain_files(modules_root, [selected_context], root_prefix=f"{module_root}/Domain")
         ensure_placeholder(modules_root, f"{module_root}/Infrastructure/Persistence", "PersistenceOptions.cs", "Module persistence options")
         create_repository_implementations(modules_root, [selected_context], root_prefix=f"{module_root}/Infrastructure")
@@ -72,13 +73,14 @@ def create_microservices_structure(services_root: str, gateway_root: str, shared
 
         ensure_dir(services_root, f"{service_root}/API/Controllers")
         ensure_dir(services_root, f"{service_root}/API/Dtos")
-        ensure_dir(services_root, f"{service_root}/Application/UseCases")
+        ensure_dir(services_root, f"{service_root}/Application/Interfaces")
+        ensure_dir(services_root, f"{service_root}/Application/Services")
         ensure_dir(services_root, f"{service_root}/Domain/Entities")
         ensure_dir(services_root, f"{service_root}/Domain/Repositories")
         ensure_dir(services_root, f"{service_root}/Infrastructure/Persistence")
 
         create_context_api_files(services_root, [selected_context], root_prefix=f"{service_root}/API")
-        create_use_case_files(services_root, [selected_context], root_prefix=f"{service_root}/Application")
+        create_application_service_files(services_root, [selected_context], root_prefix=f"{service_root}/Application")
         create_domain_files(services_root, [selected_context], root_prefix=f"{service_root}/Domain")
         ensure_placeholder(services_root, f"{service_root}/Infrastructure/Persistence", "PersistenceOptions.cs", "Service persistence options")
         create_repository_implementations(services_root, [selected_context], root_prefix=f"{service_root}/Infrastructure")
