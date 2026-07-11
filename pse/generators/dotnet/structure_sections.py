@@ -1,15 +1,41 @@
 import os
 
 from .structure_helpers import ensure_dir, ensure_placeholder, remove_placeholder
-from .structure_writers import write_controller, write_csharp_class, write_repository_class, write_repository_interface, write_test_class
-from .structure_helpers import pick_id_type
+from .structure_writers import (
+    write_controller,
+    write_csharp_class,
+    write_mediatr_cqrs_class,
+    write_mapping_config,
+    write_repository_class,
+    write_repository_interface,
+    write_service_class,
+    write_service_interface,
+    write_wolverine_cqrs_class,
+    write_test_class,
+    write_validator_class,
+)
+from .structure_helpers import pick_id_property_name, pick_id_type
 
 
-def create_api_structure(api_root: str, contexts):
+def create_api_structure(api_root: str, contexts, ctx=None):
     ensure_dir(api_root, "Controllers")
     ensure_dir(api_root, "Dtos")
     ensure_dir(api_root, "Contracts")
-    created = create_context_api_files(api_root, contexts)
+    if capability_enabled(ctx, "validation"):
+        ensure_dir(api_root, "Validators")
+    if capability_enabled(ctx, "mapping"):
+        ensure_dir(api_root, "Mapping")
+
+    created = create_context_api_files(
+        api_root,
+        contexts,
+        use_mapping=capability_enabled(ctx, "mapping"),
+        cqrs_implementation=capability_value(ctx, "cqrs"),
+    )
+    if capability_enabled(ctx, "validation"):
+        create_validator_files(api_root, contexts)
+    if capability_enabled(ctx, "mapping"):
+        create_mapping_files(api_root, contexts)
 
     if not created:
         ensure_placeholder(api_root, "Controllers", "ExampleController.cs", "API controller skeleton")
@@ -18,11 +44,25 @@ def create_api_structure(api_root: str, contexts):
         ensure_placeholder(api_root, "Contracts", "ExampleResponse.cs", "API contract response skeleton")
 
 
-def create_presentation_structure(presentation_root: str, contexts):
+def create_presentation_structure(presentation_root: str, contexts, ctx=None):
     ensure_dir(presentation_root, "Controllers")
     ensure_dir(presentation_root, "Dtos")
     ensure_dir(presentation_root, "Contracts")
-    created = create_context_api_files(presentation_root, contexts)
+    if capability_enabled(ctx, "validation"):
+        ensure_dir(presentation_root, "Validators")
+    if capability_enabled(ctx, "mapping"):
+        ensure_dir(presentation_root, "Mapping")
+
+    created = create_context_api_files(
+        presentation_root,
+        contexts,
+        use_mapping=capability_enabled(ctx, "mapping"),
+        cqrs_implementation=capability_value(ctx, "cqrs"),
+    )
+    if capability_enabled(ctx, "validation"):
+        create_validator_files(presentation_root, contexts)
+    if capability_enabled(ctx, "mapping"):
+        create_mapping_files(presentation_root, contexts)
 
     if not created:
         ensure_placeholder(presentation_root, "Controllers", "ExampleController.cs", "Presentation controller skeleton")
@@ -31,16 +71,19 @@ def create_presentation_structure(presentation_root: str, contexts):
         ensure_placeholder(presentation_root, "Contracts", "ExampleResponse.cs", "Presentation response skeleton")
 
 
-def create_application_structure(app_root: str, contexts):
+def create_application_structure(app_root: str, contexts, ctx=None):
     ensure_dir(app_root, "Interfaces")
     ensure_dir(app_root, "Services")
-    ensure_dir(app_root, "UseCases")
-    created = create_use_case_files(app_root, contexts)
+    cqrs_implementation = capability_value(ctx, "cqrs")
+    if cqrs_implementation:
+        ensure_dir(app_root, "Cqrs")
 
-    if not created:
+    created = create_application_service_files(app_root, contexts)
+    cqrs_created = create_cqrs_files(app_root, contexts, cqrs_implementation)
+
+    if not created and not cqrs_created:
         ensure_placeholder(app_root, "Interfaces", "IExampleService.cs", "Application service interface")
         ensure_placeholder(app_root, "Services", "ExampleService.cs", "Application service implementation")
-        ensure_placeholder(app_root, "UseCases", "ExampleUseCase.cs", "Application use case")
 
 
 def create_domain_structure(domain_root: str, contexts):
@@ -84,7 +127,7 @@ def create_tests_structure(tests_root: str, contexts):
         remove_placeholder(tests_root, "Integration", "ExampleIntegrationTests.cs")
 
 
-def create_context_api_files(root: str, contexts, root_prefix: str = ""):
+def create_context_api_files(root: str, contexts, root_prefix: str = "", use_mapping: bool = False, cqrs_implementation: str = None):
     created = False
     for context in contexts or []:
         if not context:
@@ -95,23 +138,109 @@ def create_context_api_files(root: str, contexts, root_prefix: str = ""):
             controller_path = os.path.join(root, root_prefix, "Controllers", f"{controller_name}.cs")
             dto_path = os.path.join(root, root_prefix, "Dtos", f"{dto_name}.cs")
 
-            write_controller(controller_path, "Controllers", controller_name, entity, dto_name)
+            write_controller(
+                controller_path,
+                "Controllers",
+                controller_name,
+                entity,
+                dto_name,
+                use_mapping=use_mapping,
+                cqrs_implementation=cqrs_implementation,
+            )
             write_csharp_class(dto_path, "Dtos", dto_name, properties=entity.properties)
             created = True
 
     return created
 
 
-def create_use_case_files(root: str, contexts, root_prefix: str = ""):
+def create_validator_files(root: str, contexts, root_prefix: str = ""):
     created = False
     for context in contexts or []:
         if not context:
             continue
         for entity in context.entities:
-            use_case_name = f"{entity.name}UseCase"
-            use_case_path = os.path.join(root, root_prefix, "UseCases", f"{use_case_name}.cs")
-            write_csharp_class(use_case_path, "UseCases", use_case_name)
+            dto_name = f"{entity.name}Dto"
+            validator_name = f"{dto_name}Validator"
+            validator_path = os.path.join(root, root_prefix, "Validators", f"{validator_name}.cs")
+            write_validator_class(validator_path, "Validators", validator_name, dto_name, entity.properties)
             created = True
+
+    return created
+
+
+def create_mapping_files(root: str, contexts, root_prefix: str = ""):
+    entities = [
+        entity
+        for context in contexts or []
+        if context
+        for entity in context.entities
+    ]
+    if not entities:
+        return False
+
+    mapping_path = os.path.join(root, root_prefix, "Mapping", "MappingConfig.cs")
+    write_mapping_config(mapping_path, "Mapping", entities)
+    return True
+
+
+def create_application_service_files(root: str, contexts, root_prefix: str = ""):
+    created = False
+    for context in contexts or []:
+        if not context:
+            continue
+        for entity in context.entities:
+            interface_name = f"I{entity.name}Service"
+            class_name = f"{entity.name}Service"
+            interface_path = os.path.join(root, root_prefix, "Interfaces", f"{interface_name}.cs")
+            class_path = os.path.join(root, root_prefix, "Services", f"{class_name}.cs")
+            write_service_interface(
+                interface_path,
+                "Interfaces",
+                interface_name,
+                entity.name,
+                pick_id_type(entity.properties),
+            )
+            write_service_class(
+                class_path,
+                "Services",
+                class_name,
+                interface_name,
+                entity.name,
+                pick_id_type(entity.properties),
+                pick_id_property_name(entity.properties),
+            )
+            created = True
+
+    return created
+
+
+def create_cqrs_files(root: str, contexts, implementation: str = None, root_prefix: str = ""):
+    if not implementation:
+        return False
+
+    created = False
+    for context in contexts or []:
+        if not context:
+            continue
+        for entity in context.entities:
+            if implementation == "mediatr":
+                cqrs_path = os.path.join(root, root_prefix, "Cqrs", f"{entity.name}Requests.cs")
+                write_mediatr_cqrs_class(
+                    cqrs_path,
+                    "Cqrs",
+                    entity.name,
+                    pick_id_type(entity.properties),
+                )
+                created = True
+            elif implementation == "wolverine":
+                cqrs_path = os.path.join(root, root_prefix, "Cqrs", f"{entity.name}Messages.cs")
+                write_wolverine_cqrs_class(
+                    cqrs_path,
+                    "Cqrs",
+                    entity.name,
+                    pick_id_type(entity.properties),
+                )
+                created = True
 
     return created
 
@@ -146,7 +275,15 @@ def create_repository_implementations(root: str, contexts, root_prefix: str = ""
             repo_name = f"{entity.name}Repository"
             repo_path = os.path.join(root, root_prefix, "Repositories", f"{repo_name}.cs")
             interface_name = f"I{entity.name}Repository"
-            write_repository_class(repo_path, "Repositories", repo_name, interface_name, entity.name, pick_id_type(entity.properties))
+            write_repository_class(
+                repo_path,
+                "Repositories",
+                repo_name,
+                interface_name,
+                entity.name,
+                pick_id_type(entity.properties),
+                pick_id_property_name(entity.properties),
+            )
             created = True
 
     return created
@@ -160,7 +297,18 @@ def create_tests_files(root: str, contexts):
         for entity in context.entities:
             test_name = f"{entity.name}Tests"
             test_path = os.path.join(root, "Unit", f"{test_name}.cs")
-            write_test_class(test_path, "Unit", test_name, entity.name)
+            write_test_class(test_path, "Unit", test_name, entity)
             created = True
 
     return created
+
+
+def capability_enabled(ctx, name: str):
+    capabilities = getattr(getattr(ctx, "capabilities", None), "capabilities", {}) or {}
+    return name.lower() in capabilities
+
+
+def capability_value(ctx, name: str):
+    capabilities = getattr(getattr(ctx, "capabilities", None), "capabilities", {}) or {}
+    capability = capabilities.get(name.lower())
+    return getattr(capability, "value", None)

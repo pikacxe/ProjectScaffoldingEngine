@@ -5,6 +5,7 @@ from pse.model.architecture import (
     Entity,
     ValueObject,
     Aggregate,
+    CapabilitySelection,
     Infrastructure,
     Database,
     Cache,
@@ -59,7 +60,13 @@ def map_capabilities(capabilities):
     if not capabilities:
         return []
 
-    return [c.name.lower() for c in capabilities.capabilities]
+    return [
+        CapabilitySelection(
+            name=c.name.lower(),
+            implementation=c.implementation.lower() if getattr(c, "implementation", None) else None,
+        )
+        for c in capabilities.capabilities
+    ]
 
 
 def map_infra(infra):
