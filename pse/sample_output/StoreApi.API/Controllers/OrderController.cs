@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using StoreApi.API.Dtos;
 using StoreApi.Domain.Entities;
-using StoreApi.Domain.Repositories;
+using StoreApi.Application.Cqrs;
+using MediatR;
+using Mapster;
 
 namespace StoreApi.API.Controllers;
 
@@ -11,79 +14,63 @@ namespace StoreApi.API.Controllers;
 [Route("[controller]")]
 public class OrderController : ControllerBase
 {
-    private readonly IOrderRepository _orderRepository;
+    private readonly IMediator _mediator;
 
-    public OrderController(IOrderRepository orderRepository)
+    public OrderController(IMediator mediator)
     {
-        _orderRepository = orderRepository;
+        _mediator = mediator;
     }
 
     [HttpGet]
-    public ActionResult<List<OrderDto>> GetAll()
+    public async Task<ActionResult<List<OrderDto>>> GetAll()
     {
-        var entities = _orderRepository.GetAll().Select(ToDto).ToList();
-        return Ok(entities);
+        var entities = await _mediator.Send(new GetAllOrderQuery());
+        var response = entities.Select(entity => entity.Adapt<OrderDto>()).ToList();
+        return Ok(response);
     }
 
     [HttpGet("{id}")]
-    public ActionResult<OrderDto> GetById(Guid id)
+    public async Task<ActionResult<OrderDto>> GetById(Guid id)
     {
-        var entity = _orderRepository.GetById(id);
+        var entity = await _mediator.Send(new GetOrderByIdQuery(id));
         if (entity is null)
         {
             return NotFound();
         }
 
-        return Ok(ToDto(entity));
+        return Ok(entity.Adapt<OrderDto>());
     }
 
     [HttpPost]
-    public ActionResult<OrderDto> Create(OrderDto request)
+    public async Task<ActionResult<OrderDto>> Create(OrderDto request)
     {
-        var entity = ToEntity(request);
-        _orderRepository.Create(entity);
-        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ToDto(entity));
+        var entity = request.Adapt<Order>();
+        var created = await _mediator.Send(new CreateOrderCommand(entity));
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created.Adapt<OrderDto>());
     }
 
     [HttpPut("{id}")]
-    public IActionResult Update(Guid id, OrderDto request)
+    public async Task<IActionResult> Update(Guid id, OrderDto request)
     {
-        var entity = ToEntity(request);
-        entity.Id = id;
-        _orderRepository.Update(entity);
-        return NoContent();
-    }
-
-    [HttpDelete("{id}")]
-    public IActionResult Delete(Guid id)
-    {
-        var existingEntity = _orderRepository.GetById(id);
-        if (existingEntity is null)
+        var entity = request.Adapt<Order>();
+        var updated = await _mediator.Send(new UpdateOrderCommand(id, entity));
+        if (!updated)
         {
             return NotFound();
         }
 
-        _orderRepository.Delete(id);
         return NoContent();
     }
 
-    private static OrderDto ToDto(Order entity)
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
     {
-        return new OrderDto
+        var deleted = await _mediator.Send(new DeleteOrderCommand(id));
+        if (!deleted)
         {
-            Id = entity.Id,
-            CreatedAt = entity.CreatedAt,
-            Status = entity.Status,
-        };
-    }
+            return NotFound();
+        }
 
-    private static Order ToEntity(OrderDto dto)
-    {
-        return new Order
-        {
-            Id = dto.Id,
-            CreatedAt = dto.CreatedAt,
-            Status = dto.Status,
-        };
+        return NoContent();
     }
 }
