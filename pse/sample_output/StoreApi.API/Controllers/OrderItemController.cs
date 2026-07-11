@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using StoreApi.API.Dtos;
 using StoreApi.Domain.Entities;
-using StoreApi.Domain.Repositories;
+using StoreApi.Application.Cqrs;
+using MediatR;
+using Mapster;
 
 namespace StoreApi.API.Controllers;
 
@@ -11,77 +14,63 @@ namespace StoreApi.API.Controllers;
 [Route("[controller]")]
 public class OrderItemController : ControllerBase
 {
-    private readonly IOrderItemRepository _orderItemRepository;
+    private readonly IMediator _mediator;
 
-    public OrderItemController(IOrderItemRepository orderItemRepository)
+    public OrderItemController(IMediator mediator)
     {
-        _orderItemRepository = orderItemRepository;
+        _mediator = mediator;
     }
 
     [HttpGet]
-    public ActionResult<List<OrderItemDto>> GetAll()
+    public async Task<ActionResult<List<OrderItemDto>>> GetAll()
     {
-        var entities = _orderItemRepository.GetAll().Select(ToDto).ToList();
-        return Ok(entities);
+        var entities = await _mediator.Send(new GetAllOrderItemQuery());
+        var response = entities.Select(entity => entity.Adapt<OrderItemDto>()).ToList();
+        return Ok(response);
     }
 
     [HttpGet("{id}")]
-    public ActionResult<OrderItemDto> GetById(Guid id)
+    public async Task<ActionResult<OrderItemDto>> GetById(Guid id)
     {
-        var entity = _orderItemRepository.GetById(id);
+        var entity = await _mediator.Send(new GetOrderItemByIdQuery(id));
         if (entity is null)
         {
             return NotFound();
         }
 
-        return Ok(ToDto(entity));
+        return Ok(entity.Adapt<OrderItemDto>());
     }
 
     [HttpPost]
-    public ActionResult<OrderItemDto> Create(OrderItemDto request)
+    public async Task<ActionResult<OrderItemDto>> Create(OrderItemDto request)
     {
-        var entity = ToEntity(request);
-        _orderItemRepository.Create(entity);
-        return CreatedAtAction(nameof(GetById), new { id = entity.ProductId }, ToDto(entity));
+        var entity = request.Adapt<OrderItem>();
+        var created = await _mediator.Send(new CreateOrderItemCommand(entity));
+        return CreatedAtAction(nameof(GetById), new { id = created.ProductId }, created.Adapt<OrderItemDto>());
     }
 
     [HttpPut("{id}")]
-    public IActionResult Update(Guid id, OrderItemDto request)
+    public async Task<IActionResult> Update(Guid id, OrderItemDto request)
     {
-        var entity = ToEntity(request);
-        entity.ProductId = id;
-        _orderItemRepository.Update(entity);
-        return NoContent();
-    }
-
-    [HttpDelete("{id}")]
-    public IActionResult Delete(Guid id)
-    {
-        var existingEntity = _orderItemRepository.GetById(id);
-        if (existingEntity is null)
+        var entity = request.Adapt<OrderItem>();
+        var updated = await _mediator.Send(new UpdateOrderItemCommand(id, entity));
+        if (!updated)
         {
             return NotFound();
         }
 
-        _orderItemRepository.Delete(id);
         return NoContent();
     }
 
-    private static OrderItemDto ToDto(OrderItem entity)
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
     {
-        return new OrderItemDto
+        var deleted = await _mediator.Send(new DeleteOrderItemCommand(id));
+        if (!deleted)
         {
-            ProductId = entity.ProductId,
-            Quantity = entity.Quantity,
-        };
-    }
+            return NotFound();
+        }
 
-    private static OrderItem ToEntity(OrderItemDto dto)
-    {
-        return new OrderItem
-        {
-            ProductId = dto.ProductId,
-            Quantity = dto.Quantity,
-        };
+        return NoContent();
     }
 }
