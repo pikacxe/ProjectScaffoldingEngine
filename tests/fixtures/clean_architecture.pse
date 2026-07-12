@@ -1,0 +1,18 @@
+Project IdentityApi target=dotnet {
+    Archetype CleanArchitecture
+
+    Context Identity {
+        Entity User {
+            Guid Id
+            Email Email
+        }
+
+        ValueObject Email {
+            String Value
+        }
+
+        Aggregate UserAggregate {
+            root User
+        }
+    }
+}
