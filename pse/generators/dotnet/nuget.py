@@ -42,13 +42,21 @@ def first_existing_project(ctx, layers):
     return None
 
 
-def restore_packages(ctx):
+def configure_packages(ctx):
 
     packages = resolve_packages(ctx)
     project_map = capability_project_map()
     default_project = project_path(ctx, "Application")
 
-    for capability, implementation in packages.items():
+    capability_order = list(packages)
+    dependency_graph = getattr(ctx, "dependency_graph", None)
+    if dependency_graph:
+        ordered = dependency_graph.topological_sort()
+        capability_order = [name for name in ordered if name in packages]
+        capability_order.extend(name for name in packages if name not in capability_order)
+
+    for capability in capability_order:
+        implementation = packages[capability]
 
         if implementation == "unresolved":
             continue
@@ -67,12 +75,12 @@ def restore_packages(ctx):
                     target_project,
                     "package",
                     package_name,
+                    "--no-restore",
                 ]
                 if package_version:
                     command.extend(["--version", package_version])
 
                 run_dotnet(command, cwd=ctx.output_dir)
-
 
 def package_target_projects(ctx, capability: str, project_map):
     if capability in {"logging", "validation", "mapping"}:

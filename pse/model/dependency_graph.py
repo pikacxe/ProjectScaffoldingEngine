@@ -15,23 +15,24 @@ class DependencyGraph:
 
     def topological_sort(self):
         visited = set()
-        visiting = set()
+        visiting = []
         result = []
 
         def visit(n):
             if n in visiting:
-                cycle = " -> ".join([*visiting, n])
+                cycle_start = visiting.index(n)
+                cycle = " -> ".join([*visiting[cycle_start:], n])
                 raise DependencyCycleError(f"Dependency cycle detected: {cycle}")
 
             if n in visited:
                 return
 
-            visiting.add(n)
+            visiting.append(n)
 
             for dep in self.nodes.get(n, []):
                 visit(dep)
 
-            visiting.remove(n)
+            visiting.pop()
             visited.add(n)
             result.append(n)
 

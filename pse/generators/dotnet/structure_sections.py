@@ -1,7 +1,9 @@
 import os
 
-from .structure_helpers import ensure_dir, ensure_placeholder, remove_placeholder
-from .structure_writers import (
+from .capabilities import capability_enabled, capability_value
+from .structure_helpers import ensure_dir
+from .writers import (
+    write_aggregate_class,
     write_controller,
     write_csharp_class,
     write_mediatr_cqrs_class,
@@ -26,7 +28,7 @@ def create_api_structure(api_root: str, contexts, ctx=None):
     if capability_enabled(ctx, "mapping"):
         ensure_dir(api_root, "Mapping")
 
-    created = create_context_api_files(
+    create_context_api_files(
         api_root,
         contexts,
         use_mapping=capability_enabled(ctx, "mapping"),
@@ -37,11 +39,6 @@ def create_api_structure(api_root: str, contexts, ctx=None):
     if capability_enabled(ctx, "mapping"):
         create_mapping_files(api_root, contexts)
 
-    if not created:
-        ensure_placeholder(api_root, "Controllers", "ExampleController.cs", "API controller skeleton")
-        ensure_placeholder(api_root, "Dtos", "ExampleDto.cs", "API DTO skeleton")
-        ensure_placeholder(api_root, "Contracts", "ExampleRequest.cs", "API contract request skeleton")
-        ensure_placeholder(api_root, "Contracts", "ExampleResponse.cs", "API contract response skeleton")
 
 
 def create_presentation_structure(presentation_root: str, contexts, ctx=None):
@@ -53,7 +50,7 @@ def create_presentation_structure(presentation_root: str, contexts, ctx=None):
     if capability_enabled(ctx, "mapping"):
         ensure_dir(presentation_root, "Mapping")
 
-    created = create_context_api_files(
+    create_context_api_files(
         presentation_root,
         contexts,
         use_mapping=capability_enabled(ctx, "mapping"),
@@ -64,11 +61,6 @@ def create_presentation_structure(presentation_root: str, contexts, ctx=None):
     if capability_enabled(ctx, "mapping"):
         create_mapping_files(presentation_root, contexts)
 
-    if not created:
-        ensure_placeholder(presentation_root, "Controllers", "ExampleController.cs", "Presentation controller skeleton")
-        ensure_placeholder(presentation_root, "Dtos", "ExampleDto.cs", "Presentation DTO skeleton")
-        ensure_placeholder(presentation_root, "Contracts", "ExampleRequest.cs", "Presentation request skeleton")
-        ensure_placeholder(presentation_root, "Contracts", "ExampleResponse.cs", "Presentation response skeleton")
 
 
 def create_application_structure(app_root: str, contexts, ctx=None):
@@ -77,58 +69,66 @@ def create_application_structure(app_root: str, contexts, ctx=None):
     cqrs_implementation = capability_value(ctx, "cqrs")
     if cqrs_implementation:
         ensure_dir(app_root, "Cqrs")
+    cleanup_inactive_cqrs_files(app_root, contexts, cqrs_implementation)
 
-    created = create_application_service_files(app_root, contexts)
-    cqrs_created = create_cqrs_files(app_root, contexts, cqrs_implementation)
+    create_application_service_files(app_root, contexts)
+    create_cqrs_files(app_root, contexts, cqrs_implementation)
 
-    if not created and not cqrs_created:
-        ensure_placeholder(app_root, "Interfaces", "IExampleService.cs", "Application service interface")
-        ensure_placeholder(app_root, "Services", "ExampleService.cs", "Application service implementation")
+
+
+def cleanup_inactive_cqrs_files(app_root: str, contexts, implementation: str = None):
+    active_suffix = {
+        "mediatr": "Requests.cs",
+        "wolverine": "Messages.cs",
+    }.get(implementation)
+    cqrs_root = os.path.join(app_root, "Cqrs")
+    if not os.path.isdir(cqrs_root):
+        return
+
+    expected = {
+        f"{entity.name}{active_suffix}"
+        for context in contexts or []
+        for entity in getattr(context, "entities", []) or []
+        if active_suffix
+    }
+    for file_name in os.listdir(cqrs_root):
+        is_generated_cqrs = file_name.endswith(("Requests.cs", "Messages.cs"))
+        if is_generated_cqrs and file_name not in expected:
+            os.remove(os.path.join(cqrs_root, file_name))
 
 
 def create_domain_structure(domain_root: str, contexts):
+    ensure_dir(domain_root, "Aggregates")
     ensure_dir(domain_root, "Entities")
     ensure_dir(domain_root, "ValueObjects")
     ensure_dir(domain_root, "Repositories")
     ensure_dir(domain_root, "Events")
-    created = create_domain_files(domain_root, contexts)
-
-    if not created:
-        ensure_placeholder(domain_root, "Entities", "ExampleEntity.cs", "Domain entity")
-        ensure_placeholder(domain_root, "ValueObjects", "ExampleValueObject.cs", "Domain value object")
-        ensure_placeholder(domain_root, "Repositories", "IExampleRepository.cs", "Repository interface")
-        ensure_placeholder(domain_root, "Events", "ExampleDomainEvent.cs", "Domain event")
+    create_domain_files(domain_root, contexts)
 
 
-def create_infrastructure_structure(infra_root: str, contexts):
+
+def create_infrastructure_structure(infra_root: str, contexts, ctx=None):
     ensure_dir(infra_root, "Persistence")
     ensure_dir(infra_root, "Repositories")
     ensure_dir(infra_root, "Messaging")
-    ensure_placeholder(infra_root, "Persistence", "PersistenceOptions.cs", "Infrastructure persistence options")
-    ensure_placeholder(infra_root, "Messaging", "MessageBusOptions.cs", "Infrastructure messaging options")
-
-    created = create_repository_implementations(infra_root, contexts)
-    if not created:
-        ensure_placeholder(infra_root, "Repositories", "ExampleRepository.cs", "Repository implementation")
-    else:
-        remove_placeholder(infra_root, "Repositories", "ExampleRepository.cs")
+    create_repository_implementations(
+        infra_root,
+        contexts,
+        use_database=capability_value(ctx, "database") == "postgres",
+    )
 
 
 def create_tests_structure(tests_root: str, contexts):
     ensure_dir(tests_root, "Unit")
     ensure_dir(tests_root, "Integration")
-    created = create_tests_files(tests_root, contexts)
+    create_tests_files(tests_root, contexts)
 
-    if not created:
-        ensure_placeholder(tests_root, "Unit", "ExampleUnitTests.cs", "Unit test skeleton")
-        ensure_placeholder(tests_root, "Integration", "ExampleIntegrationTests.cs", "Integration test skeleton")
-    else:
-        remove_placeholder(tests_root, "Unit", "ExampleUnitTests.cs")
-        remove_placeholder(tests_root, "Integration", "ExampleIntegrationTests.cs")
 
 
 def create_context_api_files(root: str, contexts, root_prefix: str = "", use_mapping: bool = False, cqrs_implementation: str = None):
     created = False
+    entity_names, value_object_names = domain_type_names(contexts)
+    project_name = os.path.basename(root).split(".")[0]
     for context in contexts or []:
         if not context:
             continue
@@ -147,7 +147,18 @@ def create_context_api_files(root: str, contexts, root_prefix: str = "", use_map
                 use_mapping=use_mapping,
                 cqrs_implementation=cqrs_implementation,
             )
-            write_csharp_class(dto_path, "Dtos", dto_name, properties=entity.properties)
+            write_csharp_class(
+                dto_path,
+                "Dtos",
+                dto_name,
+                properties=entity.properties,
+                additional_usings=property_type_usings(
+                    entity.properties,
+                    entity_names,
+                    value_object_names,
+                    f"{project_name}.Domain",
+                ),
+            )
             created = True
 
     return created
@@ -247,12 +258,25 @@ def create_cqrs_files(root: str, contexts, implementation: str = None, root_pref
 
 def create_domain_files(root: str, contexts, root_prefix: str = ""):
     created = False
+    entity_names, value_object_names = domain_type_names(contexts)
+    domain_namespace = os.path.basename(root).split(".")[0] + ".Domain"
     for context in contexts or []:
         if not context:
             continue
         for entity in context.entities:
             entity_path = os.path.join(root, root_prefix, "Entities", f"{entity.name}.cs")
-            write_csharp_class(entity_path, "Entities", entity.name, properties=entity.properties)
+            write_csharp_class(
+                entity_path,
+                "Entities",
+                entity.name,
+                properties=entity.properties,
+                additional_usings=property_type_usings(
+                    entity.properties,
+                    entity_names,
+                    value_object_names,
+                    domain_namespace,
+                ),
+            )
             repo_name = f"I{entity.name}Repository"
             repo_path = os.path.join(root, root_prefix, "Repositories", f"{repo_name}.cs")
             write_repository_interface(repo_path, "Repositories", repo_name, entity.name, pick_id_type(entity.properties))
@@ -260,13 +284,53 @@ def create_domain_files(root: str, contexts, root_prefix: str = ""):
 
         for value_object in context.value_objects:
             vo_path = os.path.join(root, root_prefix, "ValueObjects", f"{value_object.name}.cs")
-            write_csharp_class(vo_path, "ValueObjects", value_object.name, properties=value_object.properties)
+            write_csharp_class(
+                vo_path,
+                "ValueObjects",
+                value_object.name,
+                properties=value_object.properties,
+                additional_usings=property_type_usings(
+                    value_object.properties,
+                    entity_names,
+                    value_object_names,
+                    domain_namespace,
+                ),
+            )
+            created = True
+
+        for aggregate in context.aggregates:
+            aggregate_path = os.path.join(root, root_prefix, "Aggregates", f"{aggregate.name}.cs")
+            write_aggregate_class(aggregate_path, "Aggregates", aggregate)
             created = True
 
     return created
 
 
-def create_repository_implementations(root: str, contexts, root_prefix: str = ""):
+def domain_type_names(contexts):
+    entity_names = {
+        entity.name.lower()
+        for context in contexts or []
+        for entity in context.entities
+    }
+    value_object_names = {
+        value_object.name.lower()
+        for context in contexts or []
+        for value_object in context.value_objects
+    }
+    return entity_names, value_object_names
+
+
+def property_type_usings(properties, entity_names, value_object_names, domain_namespace):
+    property_types = {value.lower() for value in (properties or {}).values()}
+    usings = []
+    if property_types & entity_names:
+        usings.append(f"{domain_namespace}.Entities")
+    if property_types & value_object_names:
+        usings.append(f"{domain_namespace}.ValueObjects")
+    return usings
+
+
+def create_repository_implementations(root: str, contexts, root_prefix: str = "", use_database: bool = False):
     created = False
     for context in contexts or []:
         if not context:
@@ -283,6 +347,7 @@ def create_repository_implementations(root: str, contexts, root_prefix: str = ""
                 entity.name,
                 pick_id_type(entity.properties),
                 pick_id_property_name(entity.properties),
+                use_database=use_database,
             )
             created = True
 
@@ -301,14 +366,3 @@ def create_tests_files(root: str, contexts):
             created = True
 
     return created
-
-
-def capability_enabled(ctx, name: str):
-    capabilities = getattr(getattr(ctx, "capabilities", None), "capabilities", {}) or {}
-    return name.lower() in capabilities
-
-
-def capability_value(ctx, name: str):
-    capabilities = getattr(getattr(ctx, "capabilities", None), "capabilities", {}) or {}
-    capability = capabilities.get(name.lower())
-    return getattr(capability, "value", None)

@@ -1,39 +1,8 @@
 import os
 
-from .template_loader import render_template
-
-
 def ensure_dir(root: str, name: str):
     path = os.path.join(root, name)
     os.makedirs(path, exist_ok=True)
-
-
-def ensure_placeholder(root: str, folder: str, filename: str, description: str):
-    path = os.path.join(root, folder, filename)
-    if os.path.exists(path):
-        return
-
-    class_name = os.path.splitext(filename)[0]
-    namespace = build_namespace(path, folder)
-
-    content = render_template(
-        "CSharpClass.cs.tmpl",
-        {
-            "UsingLines": "",
-            "Namespace": namespace,
-            "Signature": f"public class {class_name}",
-            "Body": f"    // {description}.\n",
-        },
-    )
-
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
-
-
-def remove_placeholder(root: str, folder: str, filename: str):
-    path = os.path.join(root, folder, filename)
-    if os.path.exists(path):
-        os.remove(path)
 
 
 def context_by_name(contexts, name: str):
@@ -111,7 +80,8 @@ def pick_id_type(properties):
         if prop_name.lower() == "id":
             return map_type(prop_type)[0]
 
-    return "Guid"
+    first_type = next(iter(properties.values()))
+    return map_type(first_type)[0]
 
 
 def pick_id_property_name(properties):

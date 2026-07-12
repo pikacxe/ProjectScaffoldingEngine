@@ -1,6 +1,6 @@
 webapi:
   projects:
-    - Presentation
+    - API
     - Application
     - Domain
     - Infrastructure
@@ -12,8 +12,3 @@ cleanarchitecture:
     - Application
     - Domain
     - Infrastructure
-
-modularmonolith:
-  projects:
-    - SharedKernel
-    - Modules
