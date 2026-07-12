@@ -82,6 +82,75 @@ class DslServiceTests(unittest.TestCase):
         self.assertIn("Capability 'CQRS' implementation 'Unknown' is not recognized", diagnostics[0].message)
         self.assertEqual(diagnostics[0].range.start.line, 3)
 
+    def test_supported_deployment_targets_are_valid(self):
+        for target in ("Docker", "DockerSwarm", "Swarm", "Kubernetes", "K8s"):
+            source = f"Project StoreApi target=dotnet {{ Archetype WebApi Deployment {target} }}"
+            with self.subTest(target=target):
+                self.assertTrue(parse_document(source, f"{target}.pse").is_valid)
+
+    def test_unknown_deployment_target_returns_diagnostic(self):
+        source = "Project StoreApi target=dotnet { Archetype WebApi Deployment Nomad }"
+
+        diagnostics = validate_document(source, "nomad.pse")
+
+        self.assertEqual(len(diagnostics), 1)
+        self.assertIn("Deployment target 'Nomad' is not supported", diagnostics[0].message)
+
+    def test_unimplemented_archetype_returns_diagnostic(self):
+        source = "Project Demo target=dotnet { Archetype Microservices }"
+
+        diagnostics = validate_document(source, "microservices.pse")
+
+        self.assertEqual(len(diagnostics), 1)
+        self.assertIn("Archetype 'Microservices' is not recognized", diagnostics[0].message)
+
+    def test_duplicate_domain_type_across_contexts_returns_diagnostic(self):
+        source = """Project Demo target=dotnet {
+    Archetype WebApi
+    Context First { Entity User { Guid Id } }
+    Context Second { Entity User { Guid Id } }
+}"""
+
+        diagnostics = validate_document(source, "duplicates.pse")
+
+        self.assertTrue(any("globally unique" in diagnostic.message for diagnostic in diagnostics))
+
+    def test_duplicate_property_returns_diagnostic(self):
+        source = "Project Demo target=dotnet { Archetype WebApi Context C { Entity E { Guid Id String Id } } }"
+
+        diagnostics = validate_document(source, "properties.pse")
+
+        self.assertTrue(any("duplicate entity property" in diagnostic.message for diagnostic in diagnostics))
+
+    def test_empty_entity_returns_diagnostic(self):
+        source = "Project Demo target=dotnet { Archetype WebApi Context C { Entity Order {} } }"
+
+        diagnostics = validate_document(source, "empty-entity.pse")
+
+        self.assertEqual(len(diagnostics), 1)
+        self.assertIn("must define at least one property", diagnostics[0].message)
+
+    def test_duplicate_capability_returns_diagnostic(self):
+        source = """Project Demo target=dotnet {
+    Archetype WebApi
+    Capabilities {
+        Capability logging = serilog
+        Capability logging = serilog
+    }
+}"""
+
+        diagnostics = validate_document(source, "duplicate-capability.pse")
+
+        self.assertEqual(len(diagnostics), 1)
+        self.assertIn("declared more than once", diagnostics[0].message)
+
+    def test_unsupported_infrastructure_returns_diagnostic(self):
+        source = "Project Demo target=dotnet { Archetype WebApi Infrastructure { Cache Memcached } }"
+
+        diagnostics = validate_document(source, "infrastructure.pse")
+
+        self.assertTrue(any("Memcached" in diagnostic.message for diagnostic in diagnostics))
+
     def test_property_types_accept_primitives_and_domain_types(self):
         source = """Project StoreApi target=dotnet {
     Archetype WebApi

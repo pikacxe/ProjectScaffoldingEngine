@@ -1,0 +1,10 @@
+Project CatalogApi target=dotnet {
+    Archetype WebApi
+
+    Context Catalog {
+        Entity Product {
+            String Code
+            String Name
+        }
+    }
+}

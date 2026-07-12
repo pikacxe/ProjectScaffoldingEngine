@@ -58,9 +58,14 @@ class VscodeExtensionTests(unittest.TestCase):
             self.assertIn("registerCompletionItemProvider", extension_js)
             self.assertIn("PRIMITIVE_TYPES", extension_js)
             self.assertIn("Guid", extension_js)
+            self.assertIn("DockerSwarm", extension_js)
+            self.assertIn("Kubernetes", extension_js)
             self.assertIn("Project", extension_js)
             self.assertIn("registerDocumentFormattingEditProvider", extension_js)
             self.assertIn("formatPseText", extension_js)
+            self.assertNotIn("{{Keywords}}", extension_js)
+            self.assertNotIn("{{PrimitiveTypes}}", extension_js)
+            self.assertNotIn("{{Values}}", extension_js)
 
 
 if __name__ == "__main__":
