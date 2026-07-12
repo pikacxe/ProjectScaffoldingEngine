@@ -1,57 +1,54 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using StoreApi.Domain.Entities;
 using StoreApi.Domain.Repositories;
+using StoreApi.Infrastructure.Persistence;
 
 namespace StoreApi.Infrastructure.Repositories;
 
 public class OrderRepository : IOrderRepository
 {
-    private readonly List<Order> _items = new();
+    private readonly AppDbContext _dbContext;
+    private readonly DbSet<Order> _entities;
+
+    public OrderRepository(AppDbContext dbContext)
+    {
+        _dbContext = dbContext;
+        _entities = dbContext.Set<Order>();
+    }
 
     public IEnumerable<Order> GetAll()
     {
-        return _items;
+        return _entities.AsNoTracking().ToList();
     }
 
     public Order? GetById(Guid id)
     {
-        return _items.FirstOrDefault(entity =>
-            EqualityComparer<Guid>.Default.Equals(entity.Id, id));
+        return _entities.Find(id);
     }
 
     public void Create(Order entity)
     {
-        if (GetById(entity.Id) is not null)
-        {
-            Update(entity);
-            return;
-        }
-
-        _items.Add(entity);
+        _entities.Add(entity);
+        _dbContext.SaveChanges();
     }
 
     public void Update(Order entity)
     {
-        var index = _items.FindIndex(existing =>
-            EqualityComparer<Guid>.Default.Equals(existing.Id, entity.Id));
-
-        if (index >= 0)
-        {
-            _items[index] = entity;
-            return;
-        }
-
-        _items.Add(entity);
+        _entities.Update(entity);
+        _dbContext.SaveChanges();
     }
 
     public void Delete(Guid id)
     {
-        var entity = GetById(id);
-        if (entity is not null)
+        var entity = _entities.Find(id);
+        if (entity is null)
         {
-            _items.Remove(entity);
+            return;
         }
+
+        _entities.Remove(entity);
+        _dbContext.SaveChanges();
     }
 }

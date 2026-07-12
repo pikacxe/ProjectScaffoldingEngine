@@ -45,6 +45,52 @@
       "status": "completed",
       "error": null,
       "finished_at": "2026-07-09T23:35:55Z"
+    },
+    {
+      "id": "8540f980-340d-4fa4-bb7e-d617f4099560",
+      "timestamp": "2026-07-11T15:08:55Z",
+      "input_file": "/home/x/Projects/ProjectScaffoldingEngine/pse/sample_with_capabilities.pse",
+      "capabilities": [
+        {
+          "name": "cache",
+          "value": "redis",
+          "source": "inferred"
+        },
+        {
+          "name": "cqrs",
+          "value": "mediatr",
+          "source": "explicit"
+        },
+        {
+          "name": "database",
+          "value": "postgres",
+          "source": "inferred"
+        },
+        {
+          "name": "logging",
+          "value": "serilog",
+          "source": "explicit"
+        },
+        {
+          "name": "mapping",
+          "value": "mapster",
+          "source": "explicit"
+        },
+        {
+          "name": "testing",
+          "value": "xunit",
+          "source": "explicit"
+        },
+        {
+          "name": "validation",
+          "value": "fluentvalidation",
+          "source": "explicit"
+        }
+      ],
+      "dsl": "Project StoreApi target=dotnet {\n\n    Archetype WebApi\n\n    Capabilities {\n        Capability Logging\n        Capability Validation\n        Capability Mapping\n        Capability CQRS = MediatR\n        Capability Testing\n    }\n\n    Context Orders {\n\n        Entity Order {\n            Guid Id\n            DateTime CreatedAt\n            String Status\n        }\n\n        Entity OrderItem {\n            Guid ProductId\n            Int Quantity\n        }\n\n        Aggregate OrderAggregate {\n            root Order\n            children OrderItem\n        }\n    }\n\n    Infrastructure {\n        Database PostgreSQL\n        Cache Redis\n    }\n\n    Deployment Docker\n}\n",
+      "status": "completed",
+      "error": null,
+      "finished_at": "2026-07-11T15:09:21Z"
     }
   ]
 }
