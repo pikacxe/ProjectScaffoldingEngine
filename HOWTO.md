@@ -19,7 +19,7 @@ Project StoreApi target=dotnet {
 ### Supported constructs
 
 - `Project <Name> target=<dotnet|java>`: root declaration.
-- `Archetype <Name>`: project layout (e.g., WebApi, CleanArchitecture, ModularMonolith, Microservices).
+- `Archetype <Name>`: project layout (`WebApi` or `CleanArchitecture`).
 - `Capabilities { Capability <Name> }`: optional explicit capability selections.
 - `Context <Name> { ... }`: bounded context.
 - `Entity <Name> { <Type> <Name> }`: domain entity with properties.
@@ -104,10 +104,9 @@ Key integration templates:
 - `Program.cs.tmpl`: entrypoint wiring for infra.
 - `AppSettings.json.tmpl` and `AppSettings.Development.json.tmpl`.
 - `DbContext.cs.tmpl` for database context.
-- `OptionsClass.cs.tmpl` for options types.
-- `Controller.cs.tmpl` and `ControllerMethods.cs.tmpl` for thin CRUD controllers that call repositories.
-- `RepositoryInterface.cs.tmpl` and `RepositoryImplementation.cs.tmpl` for generic CRUD repository scaffolding.
-- `TestClass.cs.tmpl` for xUnit placeholder tests.
+- `Controller.cs.tmpl` plus service/CQRS method templates for thin CRUD controllers.
+- `RepositoryInterface.cs.tmpl`, `RepositoryImplementation.cs.tmpl`, and `EfRepositoryImplementation.cs.tmpl` for in-memory or EF Core persistence.
+- `TestClass.cs.tmpl` for generated xUnit entity tests.
 
 ## How capability selection works
 
@@ -145,6 +144,8 @@ The same generator is registered with textX and can be discovered by the `textx`
 textx list-generators
 textx generate pse/sample_with_capabilities.pse --target dotnet -o ./sample_output --overwrite
 ```
+
+PSE tracks generated-file hashes in `.pse-generated.json`. The `pse` command overwrites owned files by default; pass `--no-overwrite` to preserve modified files while updating unchanged generated output.
 
 ## textX-LS editor support
 
@@ -186,4 +187,3 @@ Generate and install the VS Code extension for `.pse` files:
 pse-vscode-extension --output dist/pse-0.1.0.vsix
 code --install-extension dist/pse-0.1.0.vsix
 ```
-

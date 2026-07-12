@@ -52,6 +52,8 @@ Generate through the registered textX generator:
 textx generate pse/sample_with_capabilities.pse --target dotnet -o ./pse/sample_output --overwrite
 ```
 
+Generated-file hashes are stored in `.pse-generated.json`. The CLI overwrites owned files by default; pass `--no-overwrite` to preserve files you have modified while still refreshing unchanged generated output.
+
 For generated .NET output, the `dotnet` CLI must be installed and available on `PATH`.
 
 For VS Code/textX-LS editor support, install the editor extras:
@@ -145,15 +147,17 @@ generate_dotnet(ctx)
     ├── create_projects()
     ├── create_structure()
     ├── create_integration()
-    ├── restore_packages()
-    └── create_docker()
+    ├── configure_packages()
+    ├── create_deployment()
+    └── clean_solution()
 ```
 
-**Docker Generation (Basic Infrastructure Output)**
+**Deployment Generation**
 
-- Dockerfile generation and runtime image wiring.
-- Tied to deployment target in the architecture model.
-- Uses templates in [pse/templates/dotnet](pse/templates/dotnet).
+- `Docker`: multi-stage, non-root image plus a local Compose stack with health checks and persistent dependency volumes.
+- `DockerSwarm`: image-based stack, overlay networking, rolling update/rollback policy, resource limits, persistence, and external secrets.
+- `Kubernetes`: namespace, stateless API Deployment and Service, probes, resources, restricted security context, and stateful infrastructure workloads with persistent volume claims.
+- All targets are selected from the same architecture model. YAML is emitted from structured data; the .NET image uses [pse/templates/dotnet/Dockerfile.tmpl](pse/templates/dotnet/Dockerfile.tmpl).
 
 **Integration Scaffolding**
 
@@ -162,16 +166,16 @@ generate_dotnet(ctx)
 - Adds `AppDbContext` in Infrastructure when a database is declared.
 - Wires EF Core, Redis cache, and MassTransit in Program.cs using templates.
 
-**Controller and Repository Scaffolding**
+**Controller and Application Scaffolding**
 
-- Generates thin API controllers that inject the entity repository.
+- Generates thin API controllers that use Application services, or CQRS requests when MediatR/Wolverine is selected.
 - Emits CRUD controller actions: `GetAll`, `GetById`, `Create`, `Update`, and `Delete`.
-- Generates domain repository interfaces plus infrastructure repository stubs with matching CRUD methods.
-- Keeps the controller-to-repository mapping generic with simple entity/DTO conversion helpers.
+- Application services own the use-case boundary and depend on domain repository interfaces.
+- Infrastructure repository implementations remain behind the Application layer.
 
 **Test Scaffolding**
 
-- Generates xUnit placeholder tests per entity.
+- Generates focused xUnit construction and property assertions per entity.
 - Uses one passing fact per test class so the test project starts in a runnable state.
 
 **Capability System + Resolver**
@@ -207,8 +211,8 @@ PSE is an architecture compilation engine and a declarative, heuristic-driven sc
 
 - Capability swapping (MediatR → Wolverine, Serilog → built-in logging).
 - Multi-language targets via the same semantic model.
-- Infrastructure scaling (Docker now, Kubernetes next).
-- Archetype evolution (Clean Architecture, Modular Monolith, Microservices).
+- Deployment target evolution through isolated Compose, Swarm, and Kubernetes generators.
+- Archetype evolution through the validated Web API and Clean Architecture layouts.
 
 
 ### DSL
@@ -262,7 +266,7 @@ Samples:
 
 ### Templates
 
-All emitted content is rendered from templates in [pse/templates/dotnet](pse/templates/dotnet). Edit those files to customize Program.cs, controllers, repositories, Docker artifacts, test stubs, and class skeletons.
+Generated text is kept under [pse/templates](pse/templates): .NET source templates live in `dotnet/`, the VS Code extension script in `editor/`, and deployment instructions in `deployment/`. Deployment YAML remains structured Python data so it can be composed and serialized safely.
 
 ### Editor Support With textX-LS
 
@@ -289,9 +293,11 @@ code --install-extension dist/pse-0.1.0.vsix
 ### Generated Output Notes
 
 - `pse.manifest.json` is append-only and records `status`, `error`, and `finished_at` for each run.
-- Controllers are intentionally thin and depend on repositories rather than application services.
-- Repository implementations are generic stubs that are meant as a starting point, not final data access code.
-- Test classes are placeholder xUnit facts, intended to be replaced with real assertions later.
+- `.pse-generated.json` records hashes for files owned by the generator. Normal generation refreshes owned files and removes stale owned output.
+- `pse --no-overwrite ...` preserves user-modified generated files while still refreshing unchanged owned files.
+- Controllers are intentionally thin and call Application services, or dispatch CQRS messages when CQRS is enabled.
+- Database projects receive EF Core repositories backed by `AppDbContext`; projects without a database receive thread-safe in-memory repositories.
+- Test classes contain runnable construction and property assertions and can be extended with domain behavior tests.
 
 ### Running
 
@@ -306,6 +312,8 @@ Or through the registered textX generator:
 ```bash
 textx generate pse/sample_with_capabilities.pse --target dotnet -o ./sample_output --overwrite
 ```
+
+Use `pse sample_with_capabilities.pse -o ./sample_output --no-overwrite` when generated files contain edits that must be preserved.
 
 ---
 
@@ -400,23 +408,7 @@ Domain
 Infrastructure
 ```
 
-### ModularMonolith
-
-```text
-Modules
- ├── Identity
- ├── Orders
- └── Billing
-```
-
-### Microservices
-
-```text
-Services
-Gateway
-Shared
-Infrastructure
-```
+Other archetypes should only be added when their generated solution is covered by the same build matrix.
 
 ---
 
@@ -489,16 +481,19 @@ docker-compose.yml
 ### Kubernetes
 
 ```yaml
-deployments/
-services/
-configmaps/
+deploy/kubernetes/namespace.yaml
+deploy/kubernetes/manifest.yaml
+deploy/kubernetes/secret.example.yaml
 ```
 
-### Future Targets
+### Docker Swarm
 
-* Kubernetes
-* Docker Swarm
-* Nomad
+```yaml
+deploy/swarm/stack.yml
+deploy/swarm/README.md
+```
+
+`secret.example.yaml` is never applied by the generated Kubernetes instructions. Supply real secrets using the cluster's secret-management workflow. Swarm secrets are declared as external and must be created before stack deployment.
 
 ---
 
