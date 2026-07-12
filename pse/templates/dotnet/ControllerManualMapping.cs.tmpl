@@ -1,0 +1,14 @@
+
+    private static {{DtoName}} ToDto({{EntityName}} entity)
+    {
+        return new {{DtoName}}
+        {
+{{ToDtoAssignments}}        };
+    }
+
+    private static {{EntityName}} ToEntity({{DtoName}} dto)
+    {
+        return new {{EntityName}}
+        {
+{{ToEntityAssignments}}        };
+    }

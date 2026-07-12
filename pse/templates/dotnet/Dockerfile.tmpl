@@ -1,6 +1,24 @@
-FROM mcr.microsoft.com/dotnet/aspnet:{{DotnetVersion}}
+FROM mcr.microsoft.com/dotnet/sdk:{{DotnetVersion}} AS build
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /src
+COPY . .
+RUN dotnet restore "{{EntrypointProject}}/{{EntrypointProject}}.csproj"
+RUN dotnet publish "{{EntrypointProject}}/{{EntrypointProject}}.csproj" \
+    --configuration $BUILD_CONFIGURATION \
+    --output /app/publish \
+    --no-restore \
+    /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:{{DotnetVersion}} AS runtime
+USER root
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
-COPY . .
-ENTRYPOINT ["dotnet", "{{ProjectName}}.API.dll"]
+COPY --from=build /app/publish .
+USER $APP_UID
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl --fail --silent http://localhost:8080/health/live || exit 1
+ENTRYPOINT ["dotnet", "{{EntrypointProject}}.dll"]

@@ -1,0 +1,11 @@
+# Kubernetes deployment
+
+Build and push `{{Image}}`, then update the image in `manifest.yaml`.
+
+`secret.example.yaml` is intentionally not part of the main manifest. Use it only as a key reference; create the real Secret through your platform secret manager.
+
+```sh
+kubectl apply -f deploy/kubernetes/namespace.yaml
+{{SecretSetup}}kubectl apply -f deploy/kubernetes/manifest.yaml
+kubectl -n {{AppName}} rollout status deployment/{{AppName}}
+```

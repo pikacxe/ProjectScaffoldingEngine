@@ -1,0 +1,56 @@
+    private readonly {{ServiceInterface}} {{ServiceField}};
+
+    public {{EntityName}}Controller({{ServiceInterface}} {{ServiceParameter}})
+    {
+        {{ServiceField}} = {{ServiceParameter}};
+    }
+
+    [HttpGet]
+    public ActionResult<List<{{DtoName}}>> GetAll()
+    {
+        var entities = {{ServiceField}}.GetAll().Select(entity => {{EntityToDto}}).ToList();
+        return Ok(entities);
+    }
+
+    [HttpGet("{id}")]
+    public ActionResult<{{DtoName}}> GetById({{IdType}} id)
+    {
+        var entity = {{ServiceField}}.GetById(id);
+        if (entity is null)
+        {
+            return NotFound();
+        }
+
+        return Ok({{EntityToDto}});
+    }
+
+    [HttpPost]
+    public ActionResult<{{DtoName}}> Create({{DtoName}} request)
+    {
+        var entity = {{RequestToEntity}};
+        var created = {{ServiceField}}.Create(entity);
+        return CreatedAtAction(nameof(GetById), new { id = created.{{IdPropertyName}} }, {{CreatedToDto}});
+    }
+
+    [HttpPut("{id}")]
+    public IActionResult Update({{IdType}} id, {{DtoName}} request)
+    {
+        var entity = {{RequestToEntity}};
+        if (!{{ServiceField}}.Update(id, entity))
+        {
+            return NotFound();
+        }
+
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public IActionResult Delete({{IdType}} id)
+    {
+        if (!{{ServiceField}}.Delete(id))
+        {
+            return NotFound();
+        }
+
+        return NoContent();
+    }

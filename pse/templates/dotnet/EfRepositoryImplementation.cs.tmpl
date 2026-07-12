@@ -1,0 +1,54 @@
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.EntityFrameworkCore;
+using {{DomainNamespace}}.Entities;
+using {{DomainNamespace}}.Repositories;
+using {{PersistenceNamespace}};
+
+namespace {{Namespace}};
+
+public class {{ClassName}} : {{InterfaceName}}
+{
+    private readonly AppDbContext _dbContext;
+    private readonly DbSet<{{EntityName}}> _entities;
+
+    public {{ClassName}}(AppDbContext dbContext)
+    {
+        _dbContext = dbContext;
+        _entities = dbContext.Set<{{EntityName}}>();
+    }
+
+    public IEnumerable<{{EntityName}}> GetAll()
+    {
+        return _entities.AsNoTracking().ToList();
+    }
+
+    public {{EntityName}}? GetById({{IdType}} id)
+    {
+        return _entities.Find(id);
+    }
+
+    public void Create({{EntityName}} entity)
+    {
+        _entities.Add(entity);
+        _dbContext.SaveChanges();
+    }
+
+    public void Update({{EntityName}} entity)
+    {
+        _entities.Update(entity);
+        _dbContext.SaveChanges();
+    }
+
+    public void Delete({{IdType}} id)
+    {
+        var entity = _entities.Find(id);
+        if (entity is null)
+        {
+            return;
+        }
+
+        _entities.Remove(entity);
+        _dbContext.SaveChanges();
+    }
+}

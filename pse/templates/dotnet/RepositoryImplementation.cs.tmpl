@@ -1,6 +1,5 @@
-using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using {{DomainNamespace}}.Entities;
 using {{DomainNamespace}}.Repositories;
 
@@ -8,50 +7,30 @@ namespace {{Namespace}};
 
 public class {{ClassName}} : {{InterfaceName}}
 {
-    private readonly List<{{EntityName}}> _items = new();
+    private readonly ConcurrentDictionary<{{IdType}}, {{EntityName}}> _items = new();
 
     public IEnumerable<{{EntityName}}> GetAll()
     {
-        return _items;
+        return _items.Values;
     }
 
     public {{EntityName}}? GetById({{IdType}} id)
     {
-        return _items.FirstOrDefault(entity =>
-            EqualityComparer<{{IdType}}>.Default.Equals(entity.{{IdPropertyName}}, id));
+        return _items.GetValueOrDefault(id);
     }
 
     public void Create({{EntityName}} entity)
     {
-        if (GetById(entity.{{IdPropertyName}}) is not null)
-        {
-            Update(entity);
-            return;
-        }
-
-        _items.Add(entity);
+        _items[entity.{{IdPropertyName}}] = entity;
     }
 
     public void Update({{EntityName}} entity)
     {
-        var index = _items.FindIndex(existing =>
-            EqualityComparer<{{IdType}}>.Default.Equals(existing.{{IdPropertyName}}, entity.{{IdPropertyName}}));
-
-        if (index >= 0)
-        {
-            _items[index] = entity;
-            return;
-        }
-
-        _items.Add(entity);
+        _items[entity.{{IdPropertyName}}] = entity;
     }
 
     public void Delete({{IdType}} id)
     {
-        var entity = GetById(id);
-        if (entity is not null)
-        {
-            _items.Remove(entity);
-        }
+        _items.TryRemove(id, out _);
     }
 }

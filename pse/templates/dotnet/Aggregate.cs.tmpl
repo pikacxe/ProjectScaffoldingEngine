@@ -1,0 +1,14 @@
+using System.Collections.Generic;
+using {{EntityNamespace}};
+
+namespace {{Namespace}};
+
+public class {{AggregateName}}
+{
+    public {{RootType}} Root { get; }
+{{ChildProperties}}
+    public {{AggregateName}}({{RootType}} root)
+    {
+        Root = root;
+    }
+}

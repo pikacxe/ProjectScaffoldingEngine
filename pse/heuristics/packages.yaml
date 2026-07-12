@@ -42,13 +42,15 @@ postgres:
       version: efcore
     - name: Npgsql.EntityFrameworkCore.PostgreSQL
       version: npgsql_efcore
+    - name: Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore
+      version: efcore
 
 redis:
   packages:
     - name: StackExchange.Redis
       version: stackexchange_redis
     - name: Microsoft.Extensions.Caching.StackExchangeRedis
-      version: efcore
+      version: microsoft_extensions
 
 rabbitmq:
   packages:

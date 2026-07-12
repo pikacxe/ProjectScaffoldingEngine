@@ -1,0 +1,123 @@
+const vscode = require('vscode');
+
+const KEYWORDS = {{Keywords}};
+const PRIMITIVE_TYPES = {{PrimitiveTypes}};
+const VALUES = {{Values}};
+
+function item(label, kind, detail) {
+  const completion = new vscode.CompletionItem(label, kind);
+  completion.detail = detail;
+  return completion;
+}
+
+function items(labels, kind, detail) {
+  return labels.map((label) => item(label, kind, detail));
+}
+
+function provideCompletionItems(document, position) {
+  const linePrefix = document.lineAt(position).text.slice(0, position.character);
+
+  if (/\btarget\s*=\s*$/.test(linePrefix)) {
+    return items(['dotnet', 'java'], vscode.CompletionItemKind.Value, 'PSE target');
+  }
+
+  if (/^\s*(Archetype|Database|Cache|MessageBroker|Deployment|Capability)\s+$/.test(linePrefix)) {
+    return items(VALUES, vscode.CompletionItemKind.Value, 'PSE value');
+  }
+
+  if (/^\s*Capability\s+\w+\s*=\s*$/.test(linePrefix)) {
+    return items(['MediatR', 'Wolverine'], vscode.CompletionItemKind.Value, 'PSE capability implementation');
+  }
+
+  return [
+    ...items(KEYWORDS, vscode.CompletionItemKind.Keyword, 'PSE keyword'),
+    ...items(PRIMITIVE_TYPES, vscode.CompletionItemKind.TypeParameter, 'PSE primitive type'),
+    ...items(VALUES, vscode.CompletionItemKind.Value, 'PSE value'),
+  ];
+}
+
+function formatPseText(text) {
+  const newline = text.includes('\r\n') ? '\r\n' : '\n';
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const hadFinalNewline = normalized.endsWith('\n');
+  const lines = normalized.split('\n');
+  if (hadFinalNewline) {
+    lines.pop();
+  }
+
+  const formatted = [];
+  let indent = 0;
+  let previousWasBlank = false;
+
+  for (const rawLine of lines) {
+    const trimmed = rawLine.trim();
+
+    if (trimmed.length === 0) {
+      if (!previousWasBlank) {
+        formatted.push('');
+      }
+      previousWasBlank = true;
+      continue;
+    }
+
+    previousWasBlank = false;
+    const startsWithClose = trimmed.startsWith('}');
+    if (startsWithClose) {
+      indent = Math.max(indent - 1, 0);
+    }
+
+    formatted.push(`${' '.repeat(indent * 4)}${trimmed}`);
+
+    const openCount = (trimmed.match(/\{/g) || []).length;
+    const closeCount = (trimmed.match(/\}/g) || []).length;
+    indent = Math.max(indent + openCount - closeCount + (startsWithClose ? 1 : 0), 0);
+  }
+
+  return formatted.join(newline) + (hadFinalNewline ? newline : '');
+}
+
+function provideDocumentFormattingEdits(document) {
+  const text = document.getText();
+  const formatted = formatPseText(text);
+
+  if (formatted === text) {
+    return [];
+  }
+
+  const fullRange = new vscode.Range(document.positionAt(0), document.positionAt(text.length));
+  return [vscode.TextEdit.replace(fullRange, formatted)];
+}
+
+/**
+ * @param {vscode.ExtensionContext} context
+ */
+function activate(context) {
+  const textxExtension = vscode.extensions.getExtension('textX.textX');
+  if (textxExtension && !textxExtension.isActive) {
+    textxExtension.activate();
+  }
+
+  context.subscriptions.push(
+    vscode.languages.registerCompletionItemProvider(
+      'pse',
+      { provideCompletionItems },
+      ' ',
+      '=',
+      '\t'
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerDocumentFormattingEditProvider(
+      'pse',
+      { provideDocumentFormattingEdits }
+    )
+  );
+}
+
+function deactivate() {}
+
+module.exports = {
+  activate,
+  deactivate,
+};

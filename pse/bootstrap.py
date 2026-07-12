@@ -1,8 +1,9 @@
 import json
 import os
 import shutil
+import tempfile
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from textx import metamodel_from_file
 
@@ -18,7 +19,7 @@ BASE_DIR = os.path.dirname(__file__)
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
 GRAMMAR_PATH = os.path.join(BASE_DIR, "grammar", "pse.tx")
 
-def run_pse(input_file: str, output_dir: str):
+def run_pse(input_file: str, output_dir: str, overwrite: bool = True):
     run_id = None
     try:
         print("PSE bootstrap starting...\n")
@@ -53,7 +54,8 @@ def run_pse(input_file: str, output_dir: str):
             output_dir=output_dir,
             presets=heuristics["presets"],
             packages=heuristics["packages"],
-            versions=heuristics["versions"]
+            versions=heuristics["versions"],
+            options={"overwrite": overwrite},
         )
 
         # NEW: capability system
@@ -121,7 +123,7 @@ def read_dsl_input(input_path: str):
 def write_run_manifest(output_dir: str, input_path: str, dsl_text: str, cap_graph=None):
     manifest_path = os.path.join(output_dir, "pse.manifest.json")
     run_id = str(uuid.uuid4())
-    timestamp = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    timestamp = utc_timestamp()
 
     run_entry = {
         "id": run_id,
@@ -140,13 +142,12 @@ def write_run_manifest(output_dir: str, input_path: str, dsl_text: str, cap_grap
         try:
             with open(manifest_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-        except json.JSONDecodeError:
-            data = {"runs": []}
+        except json.JSONDecodeError as error:
+            raise ValueError(f"Run manifest is not valid JSON: {manifest_path}") from error
 
     data.setdefault("runs", []).append(run_entry)
 
-    with open(manifest_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=True)
+    write_json_atomic(manifest_path, data)
 
     return run_id
 
@@ -162,8 +163,8 @@ def update_run_status(output_dir: str, run_id: str, status: str, error: str = No
     try:
         with open(manifest_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-    except json.JSONDecodeError:
-        return
+    except json.JSONDecodeError as error:
+        raise ValueError(f"Run manifest is not valid JSON: {manifest_path}") from error
 
     for run in data.get("runs", []):
         if run.get("id") == run_id:
@@ -172,11 +173,10 @@ def update_run_status(output_dir: str, run_id: str, status: str, error: str = No
                 run["error"] = error
             if cap_graph is not None:
                 run["capabilities"] = serialize_capabilities(cap_graph)
-            run["finished_at"] = datetime.now().isoformat(timespec="seconds") + "Z"
+            run["finished_at"] = utc_timestamp()
             break
 
-    with open(manifest_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=True)
+    write_json_atomic(manifest_path, data)
 
 
 def update_run_manifest(output_dir: str, run_id: str, status: str = None, error: str = None, cap_graph=None):
@@ -190,8 +190,8 @@ def update_run_manifest(output_dir: str, run_id: str, status: str = None, error:
     try:
         with open(manifest_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-    except json.JSONDecodeError:
-        return
+    except json.JSONDecodeError as error:
+        raise ValueError(f"Run manifest is not valid JSON: {manifest_path}") from error
 
     for run in data.get("runs", []):
         if run.get("id") == run_id:
@@ -203,8 +203,24 @@ def update_run_manifest(output_dir: str, run_id: str, status: str = None, error:
                 run["capabilities"] = serialize_capabilities(cap_graph)
             break
 
-    with open(manifest_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=True)
+    write_json_atomic(manifest_path, data)
+
+
+def utc_timestamp():
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def write_json_atomic(path, data):
+    directory = os.path.dirname(os.path.abspath(path))
+    fd, temporary_path = tempfile.mkstemp(prefix=".pse-manifest-", dir=directory)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(data, handle, indent=2, ensure_ascii=True)
+            handle.write("\n")
+        os.replace(temporary_path, path)
+    finally:
+        if os.path.exists(temporary_path):
+            os.remove(temporary_path)
 
 
 def serialize_capabilities(cap_graph):

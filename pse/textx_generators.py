@@ -33,6 +33,7 @@ def pse_dotnet_generator(metamodel, model, output_path, overwrite, debug):
         presets=heuristics["presets"],
         packages=heuristics["packages"],
         versions=heuristics["versions"],
+        options={"overwrite": overwrite},
     )
 
     ctx.capabilities = resolve_capabilities(ctx)

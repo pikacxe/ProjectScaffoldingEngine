@@ -8,6 +8,15 @@ from textx.exceptions import TextXSemanticError, TextXSyntaxError
 BASE_DIR = os.path.dirname(__file__)
 HEURISTICS_DIR = os.path.join(BASE_DIR, "heuristics")
 SUPPORTED_TARGETS = {"dotnet"}
+SUPPORTED_DEPLOYMENTS = {
+    "compose": "Docker",
+    "docker": "Docker",
+    "dockercompose": "Docker",
+    "dockerswarm": "DockerSwarm",
+    "k8s": "Kubernetes",
+    "kubernetes": "Kubernetes",
+    "swarm": "DockerSwarm",
+}
 
 
 @dataclass(frozen=True)
@@ -38,6 +47,7 @@ def validate_model(model, source_text: str = None):
     errors.extend(validate_project(model))
     errors.extend(validate_contexts(model, source_text))
     errors.extend(validate_infrastructure(model))
+    errors.extend(validate_deployment(model, source_text))
     errors.extend(validate_capabilities(model, source_text))
 
     if errors:
@@ -73,6 +83,7 @@ def validate_contexts(model, source_text: str = None):
     errors = []
     context_names = []
     known_types = collect_known_types(model)
+    errors.extend(validate_global_domain_names(model, source_text))
 
     for context in getattr(model, "contexts", []) or []:
         context_name = context.name
@@ -93,6 +104,27 @@ def validate_contexts(model, source_text: str = None):
         errors.extend(validate_named_collection(context_name, "aggregate", context.aggregates, source_text))
         errors.extend(validate_aggregates(context_name, context.entities, context.aggregates, source_text))
         errors.extend(validate_property_types(context_name, context.entities, context.valueObjects, known_types, source_text))
+        for item_label, items in (
+            ("entity", context.entities),
+            ("value object", context.valueObjects),
+        ):
+            for item in items or []:
+                if not (item.properties or []):
+                    errors.append(
+                        problem_from_node(
+                            f"{item_label.title()} '{item.name}' in context '{context_name}' must define at least one property.",
+                            item,
+                            source_text,
+                        )
+                    )
+                errors.extend(
+                    validate_named_collection(
+                        f"{context_name}.{item.name}",
+                        f"{item_label} property",
+                        item.properties,
+                        source_text,
+                    )
+                )
 
     return errors
 
@@ -109,7 +141,81 @@ def validate_infrastructure(model):
         if item and not getattr(item, "type", None):
             errors.append(ValidationProblem(f"Infrastructure {label} must specify a type."))
 
+    supported = {
+        "database": {"postgres", "postgresql"},
+        "cache": {"redis"},
+        "broker": {"rabbitmq"},
+    }
+    for label, implementations in supported.items():
+        item = getattr(infra, label, None)
+        value = normalize_name(getattr(item, "type", None))
+        if value and value not in implementations:
+            errors.append(
+                ValidationProblem(
+                    f"Infrastructure {label} '{item.type}' is not supported. "
+                    f"Supported values: {', '.join(sorted(implementations))}."
+                )
+            )
+
     return errors
+
+
+def validate_global_domain_names(model, source_text: str = None):
+    errors = []
+    seen_types = {}
+    seen_aggregates = {}
+
+    for context in getattr(model, "contexts", []) or []:
+        for item in [*(context.entities or []), *(context.valueObjects or [])]:
+            normalized = normalize_name(item.name)
+            previous = seen_types.get(normalized)
+            if previous:
+                errors.append(
+                    problem_from_node(
+                        f"Domain type '{item.name}' in context '{context.name}' conflicts with "
+                        f"'{previous[1]}' in context '{previous[0]}'. Generated .NET type names must be globally unique.",
+                        item,
+                        source_text,
+                    )
+                )
+            else:
+                seen_types[normalized] = (context.name, item.name)
+
+        for aggregate in context.aggregates or []:
+            normalized = normalize_name(aggregate.name)
+            previous = seen_aggregates.get(normalized)
+            if previous:
+                errors.append(
+                    problem_from_node(
+                        f"Aggregate '{aggregate.name}' in context '{context.name}' conflicts with "
+                        f"aggregate '{previous[1]}' in context '{previous[0]}'.",
+                        aggregate,
+                        source_text,
+                    )
+                )
+            else:
+                seen_aggregates[normalized] = (context.name, aggregate.name)
+
+    return errors
+
+
+def validate_deployment(model, source_text: str = None):
+    deployment = getattr(model, "deployment", None)
+    if not deployment:
+        return []
+
+    target = getattr(deployment, "target", None)
+    if normalize_name(target) in SUPPORTED_DEPLOYMENTS:
+        return []
+
+    supported = ", ".join(sorted(set(SUPPORTED_DEPLOYMENTS.values())))
+    return [
+        problem_from_node(
+            f"Deployment target '{target}' is not supported. Supported targets: {supported}.",
+            deployment,
+            source_text,
+        )
+    ]
 
 
 def validate_capabilities(model, source_text: str = None):
@@ -121,9 +227,21 @@ def validate_capabilities(model, source_text: str = None):
     registry = load_capability_registry()
     available = {normalize_name(name) for name in registry.keys()}
     errors = []
+    seen = set()
 
     for capability in explicit:
         name = normalize_name(capability.name)
+        if name in seen:
+            errors.append(
+                problem_from_node(
+                    f"Capability '{capability.name}' is declared more than once.",
+                    capability,
+                    source_text,
+                )
+            )
+            continue
+        seen.add(name)
+
         if name not in available:
             errors.append(
                 problem_from_node(

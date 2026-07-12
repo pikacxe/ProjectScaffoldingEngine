@@ -8,6 +8,7 @@ import tempfile
 import zipfile
 
 from pse.language import pse_language
+from pse.template_loader import render_template
 
 
 KEYWORD_COMPLETIONS = [
@@ -47,12 +48,13 @@ VALUE_COMPLETIONS = [
     "java",
     "WebApi",
     "CleanArchitecture",
-    "ModularMonolith",
-    "Microservices",
     "PostgreSQL",
     "Redis",
     "RabbitMQ",
     "Docker",
+    "DockerSwarm",
+    "Kubernetes",
+    "K8s",
     "Logging",
     "Validation",
     "Mapping",
@@ -100,134 +102,14 @@ def build_command(output_path: str, overwrite: bool = True):
 
 
 def completion_extension_js():
-    keywords = json.dumps(KEYWORD_COMPLETIONS, indent=2)
-    primitive_types = json.dumps(PRIMITIVE_TYPE_COMPLETIONS, indent=2)
-    values = json.dumps(VALUE_COMPLETIONS, indent=2)
-
-    return f"""const vscode = require('vscode');
-
-const KEYWORDS = {keywords};
-const PRIMITIVE_TYPES = {primitive_types};
-const VALUES = {values};
-
-function item(label, kind, detail) {{
-  const completion = new vscode.CompletionItem(label, kind);
-  completion.detail = detail;
-  return completion;
-}}
-
-function items(labels, kind, detail) {{
-  return labels.map((label) => item(label, kind, detail));
-}}
-
-function provideCompletionItems(document, position) {{
-  const linePrefix = document.lineAt(position).text.slice(0, position.character);
-
-  if (/\\btarget\\s*=\\s*$/.test(linePrefix)) {{
-    return items(['dotnet', 'java'], vscode.CompletionItemKind.Value, 'PSE target');
-  }}
-
-  if (/^\\s*(Archetype|Database|Cache|MessageBroker|Deployment|Capability)\\s+$/.test(linePrefix)) {{
-    return items(VALUES, vscode.CompletionItemKind.Value, 'PSE value');
-  }}
-
-  if (/^\\s*Capability\\s+\\w+\\s*=\\s*$/.test(linePrefix)) {{
-    return items(['MediatR', 'Wolverine'], vscode.CompletionItemKind.Value, 'PSE capability implementation');
-  }}
-
-  return [
-    ...items(KEYWORDS, vscode.CompletionItemKind.Keyword, 'PSE keyword'),
-    ...items(PRIMITIVE_TYPES, vscode.CompletionItemKind.TypeParameter, 'PSE primitive type'),
-    ...items(VALUES, vscode.CompletionItemKind.Value, 'PSE value'),
-  ];
-}}
-
-function formatPseText(text) {{
-  const newline = text.includes('\\r\\n') ? '\\r\\n' : '\\n';
-  const normalized = text.replace(/\\r\\n/g, '\\n').replace(/\\r/g, '\\n');
-  const hadFinalNewline = normalized.endsWith('\\n');
-  const lines = normalized.split('\\n');
-  if (hadFinalNewline) {{
-    lines.pop();
-  }}
-
-  const formatted = [];
-  let indent = 0;
-  let previousWasBlank = false;
-
-  for (const rawLine of lines) {{
-    const trimmed = rawLine.trim();
-
-    if (trimmed.length === 0) {{
-      if (!previousWasBlank) {{
-        formatted.push('');
-      }}
-      previousWasBlank = true;
-      continue;
-    }}
-
-    previousWasBlank = false;
-    const startsWithClose = trimmed.startsWith('}}');
-    if (startsWithClose) {{
-      indent = Math.max(indent - 1, 0);
-    }}
-
-    formatted.push(`${{' '.repeat(indent * 4)}}${{trimmed}}`);
-
-    const openCount = (trimmed.match(/\\{{/g) || []).length;
-    const closeCount = (trimmed.match(/\\}}/g) || []).length;
-    indent = Math.max(indent + openCount - closeCount + (startsWithClose ? 1 : 0), 0);
-  }}
-
-  return formatted.join(newline) + (hadFinalNewline ? newline : '');
-}}
-
-function provideDocumentFormattingEdits(document) {{
-  const text = document.getText();
-  const formatted = formatPseText(text);
-
-  if (formatted === text) {{
-    return [];
-  }}
-
-  const fullRange = new vscode.Range(document.positionAt(0), document.positionAt(text.length));
-  return [vscode.TextEdit.replace(fullRange, formatted)];
-}}
-
-/**
- * @param {{vscode.ExtensionContext}} context
- */
-function activate(context) {{
-  const textxExtension = vscode.extensions.getExtension('textX.textX');
-  if (textxExtension && !textxExtension.isActive) {{
-    textxExtension.activate();
-  }}
-
-  context.subscriptions.push(
-    vscode.languages.registerCompletionItemProvider(
-      'pse',
-      {{ provideCompletionItems }},
-      ' ',
-      '=',
-      '\\t'
+    return render_template(
+        "editor/extension.js.tmpl",
+        {
+            "Keywords": json.dumps(KEYWORD_COMPLETIONS, indent=2),
+            "PrimitiveTypes": json.dumps(PRIMITIVE_TYPE_COMPLETIONS, indent=2),
+            "Values": json.dumps(VALUE_COMPLETIONS, indent=2),
+        },
     )
-  );
-
-  context.subscriptions.push(
-    vscode.languages.registerDocumentFormattingEditProvider(
-      'pse',
-      {{ provideDocumentFormattingEdits }}
-    )
-  );
-}}
-
-function deactivate() {{}}
-
-module.exports = {{
-  activate,
-  deactivate,
-}};
-"""
 
 
 def normalize_vsix_package(output_path: str):
@@ -265,12 +147,7 @@ def generate_vscode_extension(output_path: str, overwrite: bool = True):
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
     command = build_command(output_path, overwrite=overwrite)
 
-    result = subprocess.run(
-        command,
-        text=True,
-        capture_output=True,
-    )
-
+    result = subprocess.run(command, text=True, capture_output=True)
     if result.returncode == 0:
         normalize_vsix_package(output_path)
         print(f"Generated VS Code extension: {output_path}")
@@ -307,8 +184,6 @@ def build_parser():
 
 
 def main(argv=None):
-    # Importing the descriptor keeps a direct reference to the registered language
-    # and makes this command fail early if language registration breaks.
     _ = pse_language
     args = build_parser().parse_args(argv)
     return generate_vscode_extension(args.output, overwrite=not args.no_overwrite)

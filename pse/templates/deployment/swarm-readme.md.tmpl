@@ -1,0 +1,15 @@
+# Docker Swarm deployment
+
+Build and push `{{Image}}` to a registry reachable by every Swarm node, then update the image value in `stack.yml`.
+
+Create the external secrets once:
+
+```sh
+{{SecretCommands}}
+```
+
+Deploy the stack:
+
+```sh
+docker stack deploy --with-registry-auth -c deploy/swarm/stack.yml {{AppName}}
+```

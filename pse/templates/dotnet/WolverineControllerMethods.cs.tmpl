@@ -1,0 +1,59 @@
+    private readonly IMessageBus _messageBus;
+
+    public {{EntityName}}Controller(IMessageBus messageBus)
+    {
+        _messageBus = messageBus;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<List<{{DtoName}}>>> GetAll()
+    {
+        var entities = await _messageBus.InvokeAsync<IEnumerable<{{EntityName}}>>(new GetAll{{EntityName}}Query());
+        var response = entities.Select(entity => {{EntityToDto}}).ToList();
+        return Ok(response);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<{{DtoName}}>> GetById({{IdType}} id)
+    {
+        var entity = await _messageBus.InvokeAsync<{{EntityName}}?>(new Get{{EntityName}}ByIdQuery(id));
+        if (entity is null)
+        {
+            return NotFound();
+        }
+
+        return Ok({{EntityToDto}});
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<{{DtoName}}>> Create({{DtoName}} request)
+    {
+        var entity = {{RequestToEntity}};
+        var created = await _messageBus.InvokeAsync<{{EntityName}}>(new Create{{EntityName}}Command(entity));
+        return CreatedAtAction(nameof(GetById), new { id = created.{{IdPropertyName}} }, {{CreatedToDto}});
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update({{IdType}} id, {{DtoName}} request)
+    {
+        var entity = {{RequestToEntity}};
+        var updated = await _messageBus.InvokeAsync<bool>(new Update{{EntityName}}Command(id, entity));
+        if (!updated)
+        {
+            return NotFound();
+        }
+
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete({{IdType}} id)
+    {
+        var deleted = await _messageBus.InvokeAsync<bool>(new Delete{{EntityName}}Command(id));
+        if (!deleted)
+        {
+            return NotFound();
+        }
+
+        return NoContent();
+    }

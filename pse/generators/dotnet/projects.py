@@ -1,6 +1,7 @@
 import os
 
 from pse.generators.dotnet.process import run_dotnet
+from .program import build_program_values
 from .template_loader import render_template
 
 
@@ -8,8 +9,6 @@ def archetype_layers(archetype: str):
     return {
         "WebApi": ["API", "Application", "Domain", "Infrastructure", "Tests"],
         "CleanArchitecture": ["Presentation", "Application", "Domain", "Infrastructure"],
-        "ModularMonolith": ["Modules"],
-        "Microservices": ["Services", "Gateway", "Shared", "Infrastructure"]
     }.get(archetype, ["Core"])
 
 
@@ -91,184 +90,6 @@ def ensure_program(project_dir: str, project_name: str, layer: str, ctx):
         f.write(content)
 
 
-def build_program_values(ctx, layer: str):
-    infra = ctx.architecture.infrastructure
-    base = ctx.architecture.project.name
-    contexts = ctx.architecture.contexts
-
-    using_lines = []
-    host_configuration = []
-    service_registrations = []
-    registrations = []
-    pipeline = []
-
-    has_context_entities = any(
-        getattr(context, "entities", None)
-        for context in contexts or []
-    )
-
-    if capability_enabled(ctx, "logging"):
-        using_lines.append("using Serilog;\n")
-        host_configuration.extend([
-            "builder.Host.UseSerilog((context, services, loggerConfiguration) =>",
-            "    loggerConfiguration",
-            "        .ReadFrom.Configuration(context.Configuration)",
-            "        .ReadFrom.Services(services)",
-            "        .WriteTo.Console());",
-            "",
-        ])
-
-    if capability_enabled(ctx, "validation"):
-        using_lines.append("using FluentValidation;\n")
-        using_lines.append("using FluentValidation.AspNetCore;\n")
-        service_registrations.extend([
-            "builder.Services.AddFluentValidationAutoValidation();",
-            "builder.Services.AddValidatorsFromAssemblyContaining<Program>();",
-            "",
-        ])
-
-    if capability_enabled(ctx, "mapping"):
-        using_lines.append("using Mapster;\n")
-        using_lines.append("using MapsterMapper;\n")
-        using_lines.append(f"using {base}.{layer}.Mapping;\n")
-        service_registrations.extend([
-            "MappingConfig.Register();",
-            "builder.Services.AddMapster();",
-            "",
-        ])
-
-    cqrs_implementation = capability_value(ctx, "cqrs")
-    first_entity = next(
-        (
-            entity
-            for context in contexts or []
-            for entity in getattr(context, "entities", []) or []
-        ),
-        None,
-    )
-    if has_context_entities:
-        using_lines.append(f"using {base}.Application.Interfaces;\n")
-        using_lines.append(f"using {base}.Application.Services;\n")
-        for context in contexts or []:
-            for entity in context.entities:
-                service_registrations.append(
-                    f"builder.Services.AddScoped<I{entity.name}Service, {entity.name}Service>();"
-                )
-
-        service_registrations.append("")
-
-    if cqrs_implementation in {"mediatr", "wolverine"} and has_context_entities:
-        if cqrs_implementation == "mediatr" and first_entity:
-            using_lines.append(f"using {base}.Application.Cqrs;\n")
-            service_registrations.extend([
-                f"builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<GetAll{first_entity.name}QueryHandler>());",
-                "",
-            ])
-
-    if cqrs_implementation == "wolverine":
-        using_lines.append("using Wolverine;\n")
-        if first_entity:
-            using_lines.append(f"using {base}.Application.Cqrs;\n")
-            host_configuration.extend([
-                "builder.Host.UseWolverine(options =>",
-                "{",
-                f"    options.Discovery.IncludeAssembly(typeof(GetAll{first_entity.name}Query).Assembly);",
-                "});",
-                "",
-            ])
-        else:
-            host_configuration.extend([
-                "builder.Host.UseWolverine();",
-                "",
-            ])
-
-    if has_context_entities:
-        using_lines.append(f"using {base}.Domain.Repositories;\n")
-        using_lines.append(f"using {base}.Infrastructure.Repositories;\n")
-        for context in contexts or []:
-            for entity in context.entities:
-                service_registrations.append(
-                    f"builder.Services.AddSingleton<I{entity.name}Repository, {entity.name}Repository>();"
-                )
-
-        service_registrations.append("")
-
-    if infra and (infra.database or infra.cache or infra.broker):
-        using_lines.append(f"using {base}.Application.Options;\n")
-
-    if infra and infra.database:
-        using_lines.append("using Microsoft.EntityFrameworkCore;\n")
-        using_lines.append(f"using {base}.Infrastructure.Persistence;\n")
-        registrations.extend([
-            "builder.Services.Configure<DatabaseOptions>(builder.Configuration.GetSection(\"Database\"));",
-            "builder.Services.AddDbContext<AppDbContext>(options =>",
-            "    options.UseNpgsql(builder.Configuration.GetConnectionString(\"Database\")));",
-            "",
-        ])
-
-    if infra and infra.cache:
-        registrations.extend([
-            "builder.Services.Configure<RedisOptions>(builder.Configuration.GetSection(\"Redis\"));",
-            "builder.Services.AddStackExchangeRedisCache(options =>",
-            "    options.Configuration = builder.Configuration.GetConnectionString(\"Redis\"));",
-            "",
-        ])
-
-    if infra and infra.broker:
-        using_lines.append("using MassTransit;\n")
-        registrations.extend([
-            "builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection(\"RabbitMq\"));",
-            "builder.Services.AddMassTransit(x =>",
-            "{",
-            "    x.UsingRabbitMq((context, cfg) =>",
-            "    {",
-            "        cfg.Host(builder.Configuration.GetConnectionString(\"RabbitMq\"));",
-            "    });",
-            "});",
-            "",
-        ])
-
-    using_block = "".join(using_lines)
-    host_configuration_block = "\n".join(host_configuration)
-    service_registrations_block = "\n".join(service_registrations)
-    registrations_block = "\n".join(registrations)
-    pipeline_block = "\n".join(pipeline)
-
-    if using_block:
-        using_block += "\n"
-
-    if host_configuration_block:
-        host_configuration_block += "\n"
-
-    if service_registrations_block:
-        service_registrations_block += "\n"
-
-    if registrations_block:
-        registrations_block += "\n"
-
-    if pipeline_block:
-        pipeline_block += "\n"
-
-    return {
-        "UsingLines": using_block,
-        "HostConfiguration": host_configuration_block,
-        "ServiceRegistrations": service_registrations_block,
-        "InfraRegistrations": registrations_block,
-        "InfraPipeline": pipeline_block,
-    }
-
-
-def capability_enabled(ctx, name: str):
-    capabilities = getattr(getattr(ctx, "capabilities", None), "capabilities", {}) or {}
-    return name.lower() in capabilities
-
-
-def capability_value(ctx, name: str):
-    capabilities = getattr(getattr(ctx, "capabilities", None), "capabilities", {}) or {}
-    capability = capabilities.get(name.lower())
-    return getattr(capability, "value", None)
-
-
 def add_project_references(ctx, output_dir: str, base: str, layers):
     layer_paths = {
         layer: os.path.join(output_dir, f"{base}.{layer}", f"{base}.{layer}.csproj")
@@ -289,19 +110,13 @@ def add_project_references(ctx, output_dir: str, base: str, layers):
 
     if "API" in layers:
         add_ref("API", "Application")
-        if ctx.architecture.infrastructure and (ctx.architecture.infrastructure.database or ctx.architecture.infrastructure.cache or ctx.architecture.infrastructure.broker):
-            add_ref("API", "Infrastructure")
+        add_ref("API", "Infrastructure")
 
     if "Application" in layers:
         add_ref("Application", "Domain")
 
     if "Presentation" in layers:
-        if ctx.architecture.infrastructure and (ctx.architecture.infrastructure.database or ctx.architecture.infrastructure.cache or ctx.architecture.infrastructure.broker):
-            add_ref("Presentation", "Infrastructure")
-
-    if "Gateway" in layers:
-        if ctx.architecture.infrastructure and (ctx.architecture.infrastructure.database or ctx.architecture.infrastructure.cache or ctx.architecture.infrastructure.broker):
-            add_ref("Gateway", "Infrastructure")
+        add_ref("Presentation", "Infrastructure")
 
     if "Infrastructure" in layers:
         add_ref("Infrastructure", "Application")
