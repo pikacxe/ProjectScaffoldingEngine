@@ -40,4 +40,6 @@ pse = [
     "grammar/*.tx",
     "heuristics/*.yaml",
     "templates/dotnet/*.tmpl",
+    "templates/deployment/*.tmpl",
+    "templates/editor/*.tmpl",
 ]
